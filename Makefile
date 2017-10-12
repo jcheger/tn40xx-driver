@@ -1,6 +1,3 @@
-#
-# tn40xx_ Driver
-#
 # Makefile for the tx40xx Linux driver
 
 #######################################
@@ -39,23 +36,23 @@ ifeq ($(JUMBO_MV88X3120), YES)
 	JUMBO_PHYS += -DPHY_MV88X3120
 endif
 #
-ifneq ($(wildcard $(MV88X3310_HDR) $(MV88X3310_H)),) 
+ifneq ($(wildcard $(MV88X3310_HDR) $(MV88X3310_H)),)
 	export JUMBO_MV88X3310 := YES
 endif
-ifeq ($(JUMBO_MV88X3310), YES) 
+ifeq ($(JUMBO_MV88X3310), YES)
 	JUMBO_OBJS += MV88X3310_phy.o MV88X3310_phy_Linux.o
 	JUMBO_PHYS += -DPHY_MV88X3310
-endif 
+endif
 #
-ifneq ($(wildcard $(MV88E2010_HDR) $(MV88E2010_H)),) 
+ifneq ($(wildcard $(MV88E2010_HDR) $(MV88E2010_H)),)
 	export JUMBO_MV88E2010 := YES
 endif
-ifeq ($(JUMBO_MV88E2010), YES) 
+ifeq ($(JUMBO_MV88E2010), YES)
 	ifneq ($(JUMBO_MV88X3310), YES)
 		JUMBO_OBJS += MV88X3310_phy.o MV88X3310_phy_Linux.o
 	endif
 	JUMBO_PHYS += -DPHY_MV88E2010
-endif 
+endif
 #
 # Command line options
 #
@@ -93,8 +90,8 @@ ifeq ($(MUSTANG),YES)
 	OPT_PHYS += -DPHY_MUSTANG
 endif
 #
+
 # Resume
-#
 ifeq ($(RESUME),YES)
        # RESUME=YES
 	OPT_RESUME += -D_DRIVER_RESUME_
@@ -103,32 +100,32 @@ ifdef OPT_RESUME
 	EXTRA_CFLAGS += $(OPT_RESUME)
 	MAKE_MSG += resume supported
 endif
+
+# EEE
 ifeq ($(EEE), YES)
 	EXTRA_CFLAGS += -D_EEE_
 endif
-#
+
 # No selected PHYs default to Jumbo driver
-#
 ifndef OPT_PHYS
 	DRV_OBJS+= $(JUMBO_OBJS)
-	EXTRA_CFLAGS += $(JUMBO_PHYS)	
+	EXTRA_CFLAGS += $(JUMBO_PHYS)
 else
-	EXTRA_CFLAGS += $(OPT_PHYS)	
+	EXTRA_CFLAGS += $(OPT_PHYS)
 endif
-#
+
 # Trace
-#         
 ifeq ($(TRACE),YES)
 	DRV_OBJS+= trace.o
 	EXTRA_CFLAGS += -D_TRACE_LOG_
 endif
-#
+
 # memLog
-#         
 ifeq ($(MEMLOG),YES)
 	DRV_OBJS+= memLog.o
 	EXTRA_CFLAGS += -DTN40_MEMLOG
 endif
+
 obj-m += $(DRV_NAME).o
 $(DRV_NAME)-objs := $(DRV_OBJS)
 #
@@ -143,7 +140,7 @@ endif
 
 all: clean headers
 	@echo Building kernel $(KVERSION) $(MAKE_MSG)
-	$(MAKE) -C $(KDIR) $(MODULE_DIR) modules 
+	$(MAKE) -C $(KDIR) $(MODULE_DIR) modules
 	@if [ -z $(OPT_RESUME) ]; then \
 		rm -f $(RESUME_FILE) > /dev/null 2>&1; \
 	else \
@@ -170,21 +167,21 @@ $(MV88E2010_H): $(wildcard $(MV88E2010_HDR))
 		./mvidtoh.sh $(MV88E2010_HDR) MV88E2010 $(MV88E2010_H); \
 	fi
 
-clean: 
+clean:
 	$(MAKE) -C $(KDIR) $(MODULE_DIR) clean
 
 help usage:
 	@echo " usage:"
 	@echo " make target [options]"
-	@echo "  Available targets:" 
-	@echo "    all            - build the driver" 
+	@echo "  Available targets:"
+	@echo "    all            - build the driver"
 	@echo "    clean          - Clean the driver"
 	@echo "    help           - Print this help message"
 	@echo "    install        - Install driver to system directory"
 	@echo "                        usually, it is /lib/modules/VER/kernel/drivers/net"
 	@echo "    default        - all"
 	@echo
-	@echo "  Available options:" 
+	@echo "  Available options:"
 	@echo "    MV88X3120=YES  - include Pele MV88X3120 phy"
 	@echo "    MV88X3310=YES  - include Pele MV88X3310 phy"
 	@echo "    MV88E2010=YES  - include Pele MV88E2010 phy"
@@ -207,7 +204,6 @@ install: $(DRV_NAME).ko
 	fi
 
 uninstall:
-	rm $(INSTDIR)/$(DRV_NAME).ko 
+	rm $(INSTDIR)/$(DRV_NAME).ko
 	test -f $(PM_DIR)/$(DRV_NAME) && rm $(PM_DIR)/$(DRV_NAME) || true
 	depmod $(KVERSION)
-
