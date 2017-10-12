@@ -52,7 +52,7 @@
 #define __initdata
 #endif
 
-#define BDX_DRV_VERSION   	"0.3.6.14.3.NOMV"
+#define BDX_DRV_VERSION   	"0.3.6.14.3-cleanup"
 #define DRIVER_AUTHOR     	"Tehuti networks"
 #define BDX_DRV_DESC      	"Tehuti Network Driver"
 #define BDX_NIC_NAME      	"tn40xx"
@@ -60,45 +60,36 @@
 
 /*#define _EEE_ */
 #define TN40_THUNDERBOLT
-/*
- * Trace log
- */
-#ifdef _TRACE_LOG_
-#include "trace.h"
-#else
-#define traceInit()
-#define traceOn()
-#define traceOff()
-#define traceOnce()
-#define tracePrint()
-#define traceAdd(loc, val)
-#endif
-/* Debugging Macros */
 
+/* Debugging Macros */
 #define ERR(fmt, args...)  printk(KERN_ERR BDX_DRV_NAME": "fmt, ## args)
 #define MSG(fmt, args...)  printk(KERN_ERR BDX_DRV_NAME": "fmt, ## args)
 
 /*#define BDX_ASSERT(x) BUG_ON(x) */
 #define BDX_ASSERT(x)
 
-#define TN40_DEBUG
+#if 0
+#define DEBUG 1
+#define TN40_DEBUG 1
 #define FTRACE
-/*#define REGLOG */
+#define REGLOG
+#endif
 #define WARNING
 
 #ifdef WARNING
-#define WRN(fmt, args...)   if (g_dbg)printk(KERN_ERR  BDX_DRV_NAME": " fmt,  ## args)
+#define WRN(fmt, args...)   printk(KERN_WARNING  BDX_DRV_NAME": " fmt,  ## args)
 #else
 #define WRN(fmt, args...)
 #endif
-/*				M E M L O G */
+
+/*	M E M L O G	*/
 #ifdef TN40_MEMLOG
 #include "memLog.h"
 extern int g_memLog;
-#define MEMLOG_ON							g_memLog = 1
-#define MEMLOG1_ON							g_memLog = 2
-#define MEMLOG_OFF							g_memLog = 0
-/*#define DBG(arg...)		                	if (g_memLog) memLog(TN40_DRV_NAME": " arg) */
+#define MEMLOG_ON		g_memLog = 1
+#define MEMLOG1_ON		g_memLog = 2
+#define MEMLOG_OFF		g_memLog = 0
+/*#define DBG(arg...)         	if (g_memLog) memLog(TN40_DRV_NAME": " arg) */
 
 #else
 #define MEMLOG_ON
@@ -110,29 +101,16 @@ extern int g_memLog;
 #define memLogGetLine(x) (0)
 #define memLogPrint()
 #endif
-/*				D E B U G */
-#if defined(TN40_DEBUG)
-extern int g_dbg;
-#define DBG_ON								g_dbg = 1
 
-#define DBG_OFF								g_dbg = 0
-#else
-#define DBG_ON
-#define DBG_OFF
-#endif
-
+/*	D E B U G	*/
 #if defined(TN40_DEBUG) && defined(TN40_MEMLOG)
-#define DBG(fmt, args...)					if (g_memLog) 	  memLog(fmt, ##args); else if (g_dbg) 	 printk(KERN_ERR  BDX_DRV_NAME": ""%s:%-5d: " fmt, __func__, __LINE__, ## args)
-
+#define DBG(fmt, args...)	if (g_memLog) 	  memLog(fmt, ##args); else if (g_dbg) 	 printk(KERN_ERR  BDX_DRV_NAME": ""%s:%-5d: " fmt, __func__, __LINE__, ## args)
 #elif defined(TN40_MEMLOG)
-#define DBG(fmt, args...)					if (g_memLog) 	  memLog(fmt, ##args)
-
+#define DBG(fmt, args...)	if (g_memLog) 	  memLog(fmt, ##args)
 #elif defined(TN40_DEBUG)
-#define	DBG(fmt, args...)					if (g_dbg) 		  printk(KERN_ERR  BDX_DRV_NAME": ""%s:%-5d: " fmt, __func__, __LINE__, ## args)
-
+#define	DBG(fmt, args...)	printk(KERN_ERR  BDX_DRV_NAME": ""%s:%-5d: " fmt, __func__, __LINE__, ## args)
 #else
 #define DBG(fmt, args...)
-
 #endif
 
 /*				F T R A C E */
@@ -146,8 +124,8 @@ extern int g_dbg;
 
 #ifdef REGLOG
 extern int g_regLog;
-#define REGLOG_ON							g_regLog = 1
-#define REGLOG_OFF							g_regLog = 0
+#define REGLOG_ON   g_regLog = 1
+#define REGLOG_OFF  g_regLog = 0
 u32 bdx_readl(void *base, u32 reg);
 #define READ_REG(pp, reg)     bdx_readl(pp->pBdxRegs, reg)
 #define WRITE_REG(pp, reg, val) { \
@@ -166,24 +144,24 @@ u32 tbReadReg(struct bdx_priv *priv, u32 reg);
 #endif
 #define WRITE_REG(pp, reg, val)   writel(val, pp->pBdxRegs + reg)
 
-#endif
+#endif /* REGLOG */
 
-#define TEHUTI_VID  			0x1FC9
-#define DLINK_VID  				0x1186
-#define ASUS_VID				0x1043
-#define EDIMAX_VID				0x1432
-#define PROMISE_VID				0x105a
-#define BUFFALO_VID				0x1154
+#define TEHUTI_VID       0x1FC9
+#define DLINK_VID        0x1186
+#define ASUS_VID         0x1043
+#define EDIMAX_VID       0x1432
+#define PROMISE_VID      0x105a
+#define BUFFALO_VID      0x1154
 
-#define MDIO_SPEED_1MHZ 		(1)
-#define MDIO_SPEED_6MHZ			(6)
+#define MDIO_SPEED_1MHZ  (1)
+#define MDIO_SPEED_6MHZ	 (6)
 
 /* Driver states */
 
-#define	BDX_STATE_NONE			(0x00000000)
-#define	BDX_STATE_HW_STOPPED	(0x00000001)
-#define BDX_STATE_STARTED		(0x00000002)
-#define BDX_STATE_OPEN			(0x00000004)
+#define	BDX_STATE_NONE        (0x00000000)
+#define	BDX_STATE_HW_STOPPED  (0x00000001)
+#define BDX_STATE_STARTED     (0x00000002)
+#define BDX_STATE_OPEN        (0x00000004)
 
 enum LOAD_FW {
 	NO_FW_LOAD = 0,
@@ -193,14 +171,14 @@ enum LOAD_FW {
 /* Supported PHYs */
 
 enum PHY_TYPE {
-	PHY_TYPE_NA,		/* Port not exists or unknown PHY       */
+	PHY_TYPE_NA,		/* Port not exists or unknown PHY   */
 	PHY_TYPE_CX4,		/* PHY works without initialization */
-	PHY_TYPE_QT2025,	/* QT2025 10 Gbps SFP+                          */
-	PHY_TYPE_MV88X3120,	/* MV88X3120  10baseT                           */
-	PHY_TYPE_MV88X3310,	/* MV88X3310  10NbaseT                          */
-	PHY_TYPE_MV88E2010,	/* MV88E2010  5NbaseT                           */
-	PHY_TYPE_TLK10232,	/* TI TLK10232 SFP+                                     */
-	PHY_TYPE_AQR105,	/* AQR105 10baseT                                       */
+	PHY_TYPE_QT2025,	/* QT2025 10 Gbps SFP+              */
+	PHY_TYPE_MV88X3120,	/* MV88X3120  10baseT               */
+	PHY_TYPE_MV88X3310,	/* MV88X3310  10NbaseT              */
+	PHY_TYPE_MV88E2010,	/* MV88E2010  5NbaseT               */
+	PHY_TYPE_TLK10232,	/* TI TLK10232 SFP+                 */
+	PHY_TYPE_AQR105,	/* AQR105 10baseT                   */
 	PHY_TYPE_CNT
 };
 
@@ -225,10 +203,7 @@ struct bdx_device_descr {
 };
 
 /* Compile Time Switches */
-/* start */
-/*#define USE_TIMERS */
 #define BDX_MSI
-/* end */
 
 #define BDX_DEF_MSG_ENABLE  (NETIF_MSG_DRV   | \
                  NETIF_MSG_PROBE | \
@@ -302,7 +277,7 @@ enum { IRQ_INTX, IRQ_MSI, IRQ_MSIX };
 #define PCK_TH_MULT   128
 #define INT_COAL_MULT 2
 
-#define BITS_MASK(nbits)            ((1 << nbits)-1)
+#define BITS_MASK(nbits)                    ((1 << nbits)-1)
 #define GET_BITS_SHIFT(x, nbits, nshift)    (((x) >> nshift)&BITS_MASK(nbits))
 #define BITS_SHIFT_MASK(nbits, nshift)      (BITS_MASK(nbits) << nshift)
 #define BITS_SHIFT_VAL(x, nbits, nshift)    (((x) & BITS_MASK(nbits)) << nshift)
@@ -514,15 +489,15 @@ struct bdx_priv {
 #endif
 };
 #if !defined(SPEED_5000)
-#define SPEED_5000 				(5000)
+#define SPEED_5000 			(5000)
 #endif
 #if !defined(SPEED_2500)
-#define SPEED_2500 				(2500)
+#define SPEED_2500 			(2500)
 #endif
 #define SPEED_1000X 			(1001)
-#define SPEED_100X 				(101)
+#define SPEED_100X 			(101)
 
-#define MAX_ERRMSGS				(3)
+#define MAX_ERRMSGS			(3)
 /* RX FREE descriptor - 64bit*/
 struct rxf_desc {
 	u32 info;		/* Buffer Count + Info - described below */
@@ -587,8 +562,8 @@ struct txd_desc {
 
 struct txf_desc {
 	u32 status;
-	u32 va_lo;		/* VAdr[31:0]                                                    */
-	u32 va_hi;		/* VAdr[63:32]                                                   */
+	u32 va_lo;		/* VAdr[31:0]  */
+	u32 va_hi;		/* VAdr[63:32] */
 	u32 pad;
 } __attribute__ ((packed));
 
@@ -677,24 +652,24 @@ struct txf_desc {
 #define regTXF_RPTR_3           0x40FC
 
 /* Hardware versioning */
-#define  FW_VER             0x5010
-#define  SROM_VER           0x5020
-#define  FPGA_VER           0x5030
-#define  FPGA_SEED          0x5040
+#define  FW_VER                 0x5010
+#define  SROM_VER               0x5020
+#define  FPGA_VER               0x5030
+#define  FPGA_SEED              0x5040
 
 /* Registers from 0x0100-0x0150 were remapped to 0x5100-0x5150 */
 #define regISR regISR0
-#define regISR0             0x5100
+#define regISR0                 0x5100
 
 #define regIMR regIMR0
-#define regIMR0             0x5110
+#define regIMR0                 0x5110
 
-#define regRDINTCM0         0x5120
-#define regRDINTCM2         0x5128
+#define regRDINTCM0             0x5120
+#define regRDINTCM2             0x5128
 
-#define regTDINTCM0         0x5130
+#define regTDINTCM0             0x5130
 
-#define regISR_MSK0         0x5140
+#define regISR_MSK0             0x5140
 
 #define regINIT_SEMAPHORE       0x5170
 #define regINIT_STATUS          0x5180
@@ -702,7 +677,7 @@ struct txf_desc {
 #define regMAC_LNK_STAT         0x0200
 #define MAC_LINK_STAT           0x0004	/* Link state */
 
-#define regBLNK_LED         0x0210
+#define regBLNK_LED             0x0210
 
 #define regGMAC_RXF_A           0x1240
 
@@ -710,7 +685,7 @@ struct txf_desc {
 #define regUNC_MAC1_A           0x1260
 #define regUNC_MAC2_A           0x1270
 
-#define regVLAN_0           0x1800
+#define regVLAN_0               0x1800
 
 #define regMAX_FRAME_A          0x12C0
 
@@ -718,43 +693,43 @@ struct txf_desc {
 #define regRX_MAC_MCST1         0x1A84
 #define MAC_MCST_NUM            15
 #define regRX_MCST_HASH0        0x1A00
-#define MAC_MCST_HASH_NUM        8
+#define MAC_MCST_HASH_NUM       8
 
-#define regVPC              0x2300
-#define regVIC              0x2320
-#define regVGLB             0x2340
+#define regVPC                  0x2300
+#define regVIC                  0x2320
+#define regVGLB                 0x2340
 
-#define regCLKPLL           0x5000
+#define regCLKPLL               0x5000
 
 /* MDIO interface */
 
-#define regMDIO_CMD_STAT	0x6030
-#define regMDIO_CMD			0x6034
-#define regMDIO_DATA		0x6038
-#define regMDIO_ADDR		0x603C
+#define regMDIO_CMD_STAT        0x6030
+#define regMDIO_CMD             0x6034
+#define regMDIO_DATA            0x6038
+#define regMDIO_ADDR            0x603C
 #define GET_MDIO_BUSY(x)	GET_BITS_SHIFT(x, 1, 0)
 #define GET_MDIO_RD_ERR(x)	GET_BITS_SHIFT(x, 1, 1)
 
 /*for 10G only*/
-#define regRSS_CNG      0x000000b0
+#define regRSS_CNG              0x000000b0
 
-#define RSS_ENABLED     0x00000001
-#define RSS_HFT_TOEPLITZ    0x00000002
-#define RSS_HASH_IPV4       0x00000100
-#define RSS_HASH_TCP_IPV4   0x00000200
-#define RSS_HASH_IPV6       0x00000400
-#define RSS_HASH_IPV6_EX    0x00000800
-#define RSS_HASH_TCP_IPV6   0x00001000
+#define RSS_ENABLED             0x00000001
+#define RSS_HFT_TOEPLITZ        0x00000002
+#define RSS_HASH_IPV4           0x00000100
+#define RSS_HASH_TCP_IPV4       0x00000200
+#define RSS_HASH_IPV6           0x00000400
+#define RSS_HASH_IPV6_EX        0x00000800
+#define RSS_HASH_TCP_IPV6       0x00001000
 #define RSS_HASH_TCP_IPV6_EX    0x00002000
 
 #define regRSS_HASH_BASE        0x0400
 #define RSS_HASH_LEN            40
 #define regRSS_INDT_BASE        0x0600
-#define RSS_INDT_LEN               256
+#define RSS_INDT_LEN            256
 
-#define regREVISION         0x6000
-#define regSCRATCH          0x6004
-#define regCTRLST           0x6008
+#define regREVISION             0x6000
+#define regSCRATCH              0x6004
+#define regCTRLST               0x6008
 #define regMAC_ADDR_0           0x600C
 #define regMAC_ADDR_1           0x6010
 #define regFRM_LENGTH           0x6014
@@ -765,10 +740,10 @@ struct txf_desc {
 #define regTX_FULLNESS          0x6028
 #define regHASHTABLE            0x602C
 
-#define regRST_PORT         0x7000
-#define regDIS_PORT         0x7010
-#define regRST_QU           0x7020
-#define regDIS_QU           0x7030
+#define regRST_PORT             0x7000
+#define regDIS_PORT             0x7010
+#define regRST_QU               0x7020
+#define regDIS_QU               0x7030
 
 #define regCTRLST_TX_ENA        0x0001
 #define regCTRLST_RX_ENA        0x0002
@@ -780,19 +755,19 @@ struct txf_desc {
 #define regRX_FLT               0x1400
 
 /* TXD TXF RXF RXD  CONFIG 0x0000 --- 0x007c*/
-#define  TX_RX_CFG1_BASE    0xffffffff	/*0-31 */
-#define  TX_RX_CFG0_BASE    0xfffff000	/*31:12 */
-#define  TX_RX_CFG0_RSVD    0x00000ffc	/*11:2 */
-#define  TX_RX_CFG0_SIZE    0x00000003	/*1:0 */
+#define  TX_RX_CFG1_BASE        0xffffffff	/*0-31 */
+#define  TX_RX_CFG0_BASE        0xfffff000	/*31:12 */
+#define  TX_RX_CFG0_RSVD        0x00000ffc	/*11:2 */
+#define  TX_RX_CFG0_SIZE        0x00000003	/*1:0 */
 
 /*  TXD TXF RXF RXD  WRITE 0x0080 --- 0x00BC */
-#define  TXF_WPTR_WR_PTR    0x00007ff8	/*14:3 */
+#define  TXF_WPTR_WR_PTR        0x00007ff8	/*14:3 */
 
 /*  TXD TXF RXF RXD  READ  0x00CO --- 0x00FC */
-#define  TXF_RPTR_RD_PTR    0x00007ff8	/*14:3 */
+#define  TXF_RPTR_RD_PTR        0x00007ff8	/*14:3 */
 
-#define TXF_WPTR_MASK 0x7ff0	/* The last 4 bits are dropped
-				 * size is rounded to 16 */
+#define TXF_WPTR_MASK           0x7ff0	/* The last 4 bits are dropped
+					 * size is rounded to 16 */
 
 /*  regISR 0x0100 */
 /*  regIMR 0x0110 */
@@ -882,11 +857,10 @@ struct txf_desc {
 #define netdev_for_each_mc_addr(mclist, dev) \
     for (mclist = dev->mc_list; mclist; mclist = mclist->next)
 #endif
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35)
+
 #define dev_mc_list     netdev_hw_addr
 #define dmi_addr    addr
-#endif
-#if ((LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24)) || (defined VM_KLNX))
+
 #define LUXOR__SCHEDULE_PREP(napi, dev) napi_schedule_prep(napi)
 #define LUXOR__SCHEDULE(napi, dev)  __napi_schedule(napi)
 #define LUXOR__POLL_ENABLE(dev)
@@ -895,29 +869,11 @@ struct txf_desc {
 #define LUXOR__NAPI_DISABLE(napi)   napi_disable(napi)
 #define LUXOR__NAPI_ADD(dev, napi, poll, weight) \
                   netif_napi_add(dev, napi, poll, weight)
-#else
-#define LUXOR__SCHEDULE_PREP(napi, dev) netif_rx_schedule_prep(dev)
-#define LUXOR__SCHEDULE(napi, dev)  __netif_rx_schedule(dev)
-#define LUXOR__POLL_ENABLE(dev)     netif_poll_enable(dev)
-#define LUXOR__POLL_DISABLE(dev)    netif_poll_disable(dev)
-#define LUXOR__NAPI_ENABLE(napi)
-#define LUXOR__NAPI_DISABLE(napi)
-/*#define LUXOR__NAPI_ADD(dev, napi, poll, weight) */
-#define LUXOR__NAPI_ADD(dev, napi, poll, weight) init_napi(dev, napi)
-
-inline void init_napi(struct net_device *dev, struct napi_struct *napi)
-{
-	memset(napi, 0, sizeof(*napi));
-	napi->dev = dev;
-}
-
-#endif
 
 #ifndef RHEL_RELEASE_VERSION
 #define RHEL_RELEASE_VERSION(a,b) (((a) << 8) + (b))
 #endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 31)
 #define USE_PAGED_BUFFERS             1
 /*
  * Note: 32 bit  kernels use 16 bits for page_offset. Do not increase
@@ -928,32 +884,13 @@ inline void init_napi(struct net_device *dev, struct napi_struct *napi)
 #else
 #define LUXOR__MAX_PAGE_SIZE    0x10000
 #endif
-#elif defined(RHEL_RELEASE_CODE) && (RHEL_RELEASE_CODE >= 1285) && defined(NETIF_F_GRO)
-#define USE_PAGED_BUFFERS             1
-/*
- * Note: RHEL & CentOs use 16 bits for page_offset. Do not increas
- *       LUXOR__MAX_PAGE_SIZE beyind 64K!
- */
-#define LUXOR__MAX_PAGE_SIZE    0x10000
-void inline skb_add_rx_frag(struct sk_buff *skb, int i, struct page *page,
-			    int off, int size)
-{
-	skb_fill_page_desc(skb, i, page, off, size);
-	skb->len += size;
-	skb->data_len += size;
-	skb->truesize += size;
-}
-#elif defined(USE_PAGED_BUFFERS) && USE_PAGED_BUFFERS == 0
-#define LUXOR__MAX_PAGE_SIZE    0x10000
-#undef USE_PAGED_BUFFERS
-#else
-#define LUXOR__MAX_PAGE_SIZE    0x10000
-#endif
+
 #if (defined(RHEL_RELEASE_CODE) && \
      (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(6,4)) && \
      (RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(7,0)))
 #define RHEL6_ETHTOOL_OPS_EXT_STRUCT
 #endif /* RHEL >= 6.4 && RHEL < 7.0 */
+
 #if defined(NETIF_F_GRO)
 #define LUXOR__VLAN_RECEIVE(napi, grp, vlan_tci, skb) \
     vlan_gro_receive(napi, grp, vlan_tci, skb)

@@ -1,6 +1,3 @@
-#
-# tn40xx_ Driver
-#
 # Makefile for the tx40xx Linux driver
 
 #######################################
@@ -37,9 +34,8 @@ ifeq ($(AQ),YES)
 	DRB_OBJS += AQR105_phy.o AQR105_phy_Linux.o
 	OPT_PHYS += -DPHY_AQR105
 endif
-#
+
 # Resume
-#
 ifeq ($(RESUME),YES)
        # RESUME=YES
 	OPT_RESUME += -D_DRIVER_RESUME_
@@ -48,37 +44,35 @@ ifdef OPT_RESUME
 	EXTRA_CFLAGS += $(OPT_RESUME)
 	MAKE_MSG += resume supported
 endif
+
+# EEE
 ifeq ($(EEE), YES)
 	EXTRA_CFLAGS += -D_EEE_
 endif
-#
+
 # No selected PHYs default to Jumbo driver
-#
 ifndef OPT_PHYS
 	DRB_OBJS += $(JUMO_OBJS)
 	EXTRA_CFLAGS += $(JUMBO_PHYS)	
 else
 	EXTRA_CFLAGS += $(OPT_PHYS)	
 endif
-#
+
 # Trace
-#         
 ifeq ($(TRACE),YES)
 	DRB_OBJS += trace.o
 	EXTRA_CFLAGS += -D_TRACE_LOG_
 endif
-#
+
 # memLog
-#         
 ifeq ($(MEMLOG),YES)
 	DRB_OBJS += memLog.o
 	EXTRA_CFLAGS += -DTN40_MEMLOG
 endif
+
 obj-m += $(DRV_NAME).o
 $(DRV_NAME)-objs := $(DRB_OBJS)
-#
-# Check existance of kernel build directory
-#
+
 KDIR=$(shell [ -e $(EXPECTED_KDIR) ] && echo $(EXPECTED_KDIR))
 ifeq (,$(KDIR))
   $(error Aborting the build: Linux kernel $(EXPECTED_KDIR) source not found)
@@ -131,5 +125,3 @@ uninstall:
 	rm $(INSTDIR)/$(DRV_NAME).ko 
 	test -f $(PM_DIR)/$(DRV_NAME) && rm $(PM_DIR)/$(DRV_NAME) || true
 	depmod $(KVERSION)
-
-#endif # else of ifneq ($(KERNELRELEASE), )

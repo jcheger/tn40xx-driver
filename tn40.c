@@ -7,9 +7,6 @@
  */
 
 #include "tn40.h"
-#ifdef VM_KLNX
-#include "tn40_vmware.h"
-#endif
 #include "tn40_fw.h"
 
 static void bdx_scan_pci(void);
@@ -48,22 +45,6 @@ static struct bdx_device_descr bdx_dev_tbl[] = {
 	LDEV(TEHUTI_VID, 0x4022, 0x8103, 1, 1, QT2025, NA,
 	     "Edimax 10 Gigabit Ethernet SFP+ PCI Express Adapter"),
 #endif
-#ifdef PHY_MV88X3120
-	LDEV(TEHUTI_VID, 0x4024, 0x3015, 1, 1, MV88X3120, NA,
-	     "TN9210 10GBase-T Ethernet Adapter"),
-#endif
-#ifdef PHY_MV88X3310
-	LDEV(TEHUTI_VID, 0x4027, 0x3015, 1, 1, MV88X3310, NA,
-	     "TN9710P 10GBase-T/NBASE-T Ethernet Adapter"),
-	LDEV(TEHUTI_VID, 0x4027, 0x8104, 1, 1, MV88X3310, NA,
-	     "Edimax 10 Gigabit Ethernet PCI Express Adapter"),
-	LDEV(TEHUTI_VID, 0x4027, 0x0368, 1, 1, MV88X3310, NA,
-	     "Buffalo LGY-PCIE-MG Ethernet Adapter"),
-#endif
-#ifdef PHY_MV88E2010
-	LDEV(TEHUTI_VID, 0x4527, 0x3015, 1, 1, MV88E2010, NA,
-	     "TN9710Q 5GBase-T/NBASE-T Ethernet Adapter"),
-#endif
 #ifdef PHY_TLK10232
 	LDEV(TEHUTI_VID, 0x4026, 0x3015, 1, 1, TLK10232, NA,
 	     "TN9610 10GbE SFP+ Ethernet Adapter"),
@@ -87,17 +68,6 @@ static struct pci_device_id bdx_pci_tbl[] = {
 	{TEHUTI_VID, 0x4022, DLINK_VID, 0x4d00, 0, 0, 0},
 	{TEHUTI_VID, 0x4022, ASUS_VID, 0x8709, 0, 0, 0},
 	{TEHUTI_VID, 0x4022, EDIMAX_VID, 0x8103, 0, 0, 0},
-#endif
-#ifdef PHY_MV88X3120
-	{TEHUTI_VID, 0x4024, TEHUTI_VID, 0x3015, 0, 0, 0},
-#endif
-#ifdef PHY_MV88X3310
-	{TEHUTI_VID, 0x4027, TEHUTI_VID, 0x3015, 0, 0, 0},
-	{TEHUTI_VID, 0x4027, EDIMAX_VID, 0x8104, 0, 0, 0},
-	{TEHUTI_VID, 0x4027, BUFFALO_VID, 0x0368, 0, 0, 0},
-#endif
-#ifdef PHY_MV88E2010
-	{TEHUTI_VID, 0x4527, TEHUTI_VID, 0x3015, 0, 0, 0},
 #endif
 #ifdef PHY_TLK10232
 	{TEHUTI_VID, 0x4026, TEHUTI_VID, 0x3015, 0, 0, 0},
@@ -180,9 +150,6 @@ static int bdx_init_rss(struct bdx_priv *priv)
 #define    bdx_init_rss(priv)
 #endif
 
-#if defined(TN40_DEBUG)
-int g_dbg = 0;
-#endif
 #if defined(TN40_FTRACE)
 
 #endif
@@ -195,42 +162,34 @@ int g_memLog = 0;
 
 #if defined(TN40_DEBUG)
 
-/*
+#if 0
 static void dbg_irqActions(struct pci_dev *pdev)
 {
-    struct msi_desc *entry;
-DBG_ON;
-	list_for_each_entry(entry, &pdev->msi_list, list)
-    {
-			int i, j=0, nvec;
-			if (!entry->irq)
-			{
-				continue;
+	struct msi_desc *entry;
+	DBG_ON;
+	list_for_each_entry(entry, &pdev->msi_list, list) {
+		int i, j = 0, nvec;
+		if (!entry->irq) {
+			continue;
+		}
+		if (entry->nvec_used) {
+			nvec = entry->nvec_used;
+		} else {
+			nvec = 1 << entry->msi_attrib.multiple;
+		}
+		for (i = 0; i < nvec; i++) {
+
+			if (irq_has_action(entry->irq + i)) {
+				DBG("action on irq %d\n", entry->irq + i);
+				j += 1;
 			}
-			if (entry->nvec_used)
-			{
-				nvec = entry->nvec_used;
-			}
-			else
-			{
-				nvec = 1 << entry->msi_attrib.multiple;
-			}
-			for (i = 0; i < nvec; i++)
-			{
-				//BUG_ON(irq_has_action(entry->irq + i));
-				if (irq_has_action(entry->irq + i))
-				{
-					DBG("action on irq %d\n", entry->irq + i);
-					j += 1;
-				}
-			}
-			DBG("irq %d nvec %d found %d\n", entry->irq, nvec, j);
+		}
+		DBG("irq %d nvec %d found %d\n", entry->irq, nvec, j);
 	}
-DBG_OFF;
+	DBG_OFF;
 
-} //dbg_irqActions()
-
-*/
+}
+#endif
 
 void dbg_printFifo(struct fifo *m, char *fName)
 {
@@ -259,7 +218,6 @@ void dbg_printPBL(struct pbl *pbl)
 {
 	DBG("pbl: len %u pa_lo 0x%x pa_hi 0x%x\n", pbl->len, pbl->pa_lo,
 	    pbl->pa_hi);
-
 }
 
 #else
@@ -492,39 +450,6 @@ static int __init bdx_mdio_phy_search(struct bdx_priv *priv,
 		break;
 #endif
 
-#ifdef PHY_MV88X3120
-	case 0x01405896:
-		s = "MV88X3120 10Gbps 10GBase-T";
-		*phy_t = MV88X3120_register(priv);
-		break;
-
-#endif
-
-#if (defined PHY_MV88X3310) || (defined PHY_MV88E2010)
-	case 0x02b09aa:
-	case 0x02b09ab:
-		if (priv->deviceId == 0x4027) {
-			s = (i ==
-			     0x02b09aa) ? "MV88X3310 (A0) 10Gbps 10GBase-T" :
-			    "MV88X3310 (A1) 10Gbps 10GBase-T";
-			*phy_t = MV88X3310_register(priv);
-		} else if (priv->deviceId == 0x4527) {
-			s = (i ==
-			     0x02b09aa) ? "MV88E2010 (A0) 5Gbps 5GBase-T" :
-			    "MV88E2010 (A1) 5Gbps 5GBase-T";
-			*phy_t = MV88X3310_register(priv);
-		} else if (priv->deviceId == 0x4010) {
-			s = "Dummy CX4";
-			*phy_t = CX4_register(priv);
-		} else {
-			s = "";
-			ERR("Unsupported device id/phy id 0x%x/0x%x !\n",
-			    priv->pdev->device, i);
-		}
-		break;
-
-#endif
-
 #ifdef PHY_TLK10232
 	case 0x40005100:
 		s = "TLK10232 10Gbps SFP+";
@@ -577,10 +502,6 @@ static int __init bdx_mdio_reset(struct bdx_priv *priv, int port,
 	return priv->phy_ops.mdio_reset(priv, port, phy);
 }
 
-/*************************************************************************
- *    Print Info                             *
- *************************************************************************/
-
 static void print_hw_id(struct pci_dev *pdev)
 {
 	struct pci_nic *nic = pci_get_drvdata(pdev);
@@ -627,7 +548,6 @@ static void print_eth_id(struct net_device *ndev)
  * Returns 0 on success, negative value on failure
  *
  */
-
 static int
 bdx_fifo_init(struct bdx_priv *priv, struct fifo *f, int fsz_type,
 	      u16 reg_CFG0, u16 reg_CFG1, u16 reg_RPTR, u16 reg_WPTR)
@@ -663,13 +583,11 @@ bdx_fifo_init(struct bdx_priv *priv, struct fifo *f, int fsz_type,
  */
 static void bdx_fifo_free(struct bdx_priv *priv, struct fifo *f)
 {
-
 	if (f->va) {
 		pci_free_consistent(priv->pdev,
 				    f->memsz + FIFO_EXTRA_SPACE, f->va, f->da);
 		f->va = NULL;
 	}
-	return;
 }
 
 int bdx_speed_set(struct bdx_priv *priv, u32 speed)
@@ -686,18 +604,16 @@ int bdx_speed_set(struct bdx_priv *priv, u32 speed)
 	case SPEED_1000X:
 	case SPEED_100X:
 		DBG("link_speed %d\n", speed);
-
-		WRITE_REG(priv, 0x1010, 0x217);	/*ETHSD.REFCLK_CONF  */
-		WRITE_REG(priv, 0x104c, 0x4c);	/*ETHSD.L0_RX_PCNT  */
-		WRITE_REG(priv, 0x1050, 0x4c);	/*ETHSD.L1_RX_PCNT  */
-		WRITE_REG(priv, 0x1054, 0x4c);	/*ETHSD.L2_RX_PCNT  */
-		WRITE_REG(priv, 0x1058, 0x4c);	/*ETHSD.L3_RX_PCNT  */
-		WRITE_REG(priv, 0x102c, 0x434);	/*ETHSD.L0_TX_PCNT  */
-		WRITE_REG(priv, 0x1030, 0x434);	/*ETHSD.L1_TX_PCNT  */
-		WRITE_REG(priv, 0x1034, 0x434);	/*ETHSD.L2_TX_PCNT  */
-		WRITE_REG(priv, 0x1038, 0x434);	/*ETHSD.L3_TX_PCNT  */
-		WRITE_REG(priv, 0x6300, 0x0400);	/*MAC.PCS_CTRL */
-
+		WRITE_REG(priv, 0x1010, 0x217);	/* ETHSD.REFCLK_CONF  */
+		WRITE_REG(priv, 0x104c, 0x4c);	/* ETHSD.L0_RX_PCNT  */
+		WRITE_REG(priv, 0x1050, 0x4c);	/* ETHSD.L1_RX_PCNT  */
+		WRITE_REG(priv, 0x1054, 0x4c);	/* ETHSD.L2_RX_PCNT  */
+		WRITE_REG(priv, 0x1058, 0x4c);	/* ETHSD.L3_RX_PCNT  */
+		WRITE_REG(priv, 0x102c, 0x434);	/* ETHSD.L0_TX_PCNT  */
+		WRITE_REG(priv, 0x1030, 0x434);	/* ETHSD.L1_TX_PCNT  */
+		WRITE_REG(priv, 0x1034, 0x434);	/* ETHSD.L2_TX_PCNT  */
+		WRITE_REG(priv, 0x1038, 0x434);	/* ETHSD.L3_TX_PCNT  */
+		WRITE_REG(priv, 0x6300, 0x0400);	/* MAC.PCS_CTRL */
 		WRITE_REG(priv, 0x1018, 0x00);	/*Mike2 */
 		udelay(5);
 		WRITE_REG(priv, 0x1018, 0x04);	/*Mike2 */
@@ -706,18 +622,17 @@ int bdx_speed_set(struct bdx_priv *priv, u32 speed)
 		udelay(5);
 		/*MikeFix1 */
 		/*L0: 0x103c , L1: 0x1040 , L2: 0x1044 , L3: 0x1048 =0x81644 */
-		WRITE_REG(priv, 0x103c, 0x81644);	/*ETHSD.L0_TX_DCNT  */
-		WRITE_REG(priv, 0x1040, 0x81644);	/*ETHSD.L1_TX_DCNT  */
-		WRITE_REG(priv, 0x1044, 0x81644);	/*ETHSD.L2_TX_DCNT  */
-		WRITE_REG(priv, 0x1048, 0x81644);	/*ETHSD.L3_TX_DCNT  */
-		WRITE_REG(priv, 0x1014, 0x043);	/*ETHSD.INIT_STAT */
+		WRITE_REG(priv, 0x103c, 0x81644);	/* ETHSD.L0_TX_DCNT  */
+		WRITE_REG(priv, 0x1040, 0x81644);	/* ETHSD.L1_TX_DCNT  */
+		WRITE_REG(priv, 0x1044, 0x81644);	/* ETHSD.L2_TX_DCNT  */
+		WRITE_REG(priv, 0x1048, 0x81644);	/* ETHSD.L3_TX_DCNT  */
+		WRITE_REG(priv, 0x1014, 0x043);	/* ETHSD.INIT_STAT */
 		for (i = 1000; i; i--) {
 			udelay(50);
 			val = READ_REG(priv, 0x1014);	/*ETHSD.INIT_STAT */
 			if (val & (1 << 9)) {
 				WRITE_REG(priv, 0x1014, 0x3);	/*ETHSD.INIT_STAT */
 				val = READ_REG(priv, 0x1014);	/*ETHSD.INIT_STAT */
-
 				break;
 			}
 		}
@@ -737,12 +652,10 @@ int bdx_speed_set(struct bdx_priv *priv, u32 speed)
 			udelay(50);
 		}
 		WRITE_REG(priv, 0x111c, 0x0);	/*MAC.MAC_RST_CNT */
-
 		break;
 
 	case SPEED_1000:
 	case SPEED_100:
-
 		WRITE_REG(priv, 0x1010, 0x613);	/*ETHSD.REFCLK_CONF  */
 		WRITE_REG(priv, 0x104c, 0x4d);	/*ETHSD.L0_RX_PCNT  */
 		WRITE_REG(priv, 0x1050, 0x0);	/*ETHSD.L1_RX_PCNT  */
@@ -761,7 +674,6 @@ int bdx_speed_set(struct bdx_priv *priv, u32 speed)
 			if (val & (1 << 9)) {
 				WRITE_REG(priv, 0x1014, 0x3);	/*ETHSD.INIT_STAT */
 				val = READ_REG(priv, 0x1014);	/*ETHSD.INIT_STAT */
-
 				break;
 			}
 		}
@@ -770,7 +682,6 @@ int bdx_speed_set(struct bdx_priv *priv, u32 speed)
 		}
 		WRITE_REG(priv, 0x6350, 0x2b);	/*MAC.PCS_IF_MODE 1g */
 		WRITE_REG(priv, 0x6310, 0x9801);	/*MAC.PCS_DEV_AB */
-
 		WRITE_REG(priv, 0x6314, 0x1);	/*MAC.PCS_PART_AB */
 		WRITE_REG(priv, 0x6348, 0xc8);	/*MAC.PCS_LINK_LO */
 		WRITE_REG(priv, 0x634c, 0xc8);	/*MAC.PCS_LINK_HI */
@@ -782,11 +693,9 @@ int bdx_speed_set(struct bdx_priv *priv, u32 speed)
 		}
 		WRITE_REG(priv, 0x111c, 0x0);	/*MAC.MAC_RST_CNT */
 		WRITE_REG(priv, 0x6300, 0x1140);	/*MAC.PCS_CTRL */
-
 		break;
 
 	case 0:		/* Link down */
-
 		WRITE_REG(priv, 0x104c, 0x0);	/*ETHSD.L0_RX_PCNT  */
 		WRITE_REG(priv, 0x1050, 0x0);	/*ETHSD.L1_RX_PCNT  */
 		WRITE_REG(priv, 0x1054, 0x0);	/*ETHSD.L2_RX_PCNT  */
@@ -795,7 +704,6 @@ int bdx_speed_set(struct bdx_priv *priv, u32 speed)
 		WRITE_REG(priv, 0x1030, 0x0);	/*ETHSD.L1_TX_PCNT  */
 		WRITE_REG(priv, 0x1034, 0x0);	/*ETHSD.L2_TX_PCNT  */
 		WRITE_REG(priv, 0x1038, 0x0);	/*ETHSD.L3_TX_PCNT  */
-
 		WRITE_REG(priv, regCTRLST, 0x800);
 		WRITE_REG(priv, 0x111c, 0x7ff);	/*MAC.MAC_RST_CNT */
 		for (i = 40; i--;) {
@@ -833,7 +741,6 @@ void bdx_speed_changed(struct bdx_priv *priv, u32 speed)
  *
  * @bdx_priv - HW adapter structure
  */
-
 static void bdx_link_changed(struct bdx_priv *priv)
 {
 	u32 link = priv->phy_ops.link_changed(priv);;
@@ -875,19 +782,8 @@ static inline void bdx_isr_extra(struct bdx_priv *priv, u32 isr)
 		DBG("isr = 0x%x\n", isr);
 		bdx_link_changed(priv);
 	}
-#if 0
-	if (isr & IR_RX_FREE_0) {
-		DBG("RX_FREE_0\n");
-	}
-	if (isr & IR_PCIE_LINK)
-		ERR("%s PCI-E Link Fault\n", priv->ndev->name);
-
-	if (isr & IR_PCIE_TOUT)
-		ERR("%s PCI-E Time Out\n", priv->ndev->name);
-#endif
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24) || (defined VM_KLNX)
 /* bdx_isr - Interrupt Service Routine for Bordeaux NIC
  * @irq    - Interrupt number
  * @ndev   - Network device
@@ -946,122 +842,6 @@ static irqreturn_t bdx_isr_napi(int irq, void *dev)
 	return IRQ_HANDLED;
 }
 
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 19)
-/* bdx_isr - Interrupt Service Routine for Bordeaux NIC
- * @irq    - Interrupt number
- * @ndev   - Network device
- * @regs   - CPU registers
- *
- * Return IRQ_NONE if it was not our interrupt, IRQ_HANDLED - otherwise
- *
- * Read the ISR register to know interrupt triggers and process them one by
- * one.
- *
- * Interrupt triggers are:
- *    RX_DESC - A new packet has arrived and RXD fifo holds its descriptor
- *    RX_FREE - The number of free Rx buffers in RXF fifo gets low
- *    TX_FREE - A packet was transmitted and RXF fifo holds its descriptor
- */
-static irqreturn_t bdx_isr_napi(int irq, struct net_device *ndev)
-{
-	struct bdx_priv *priv = ndev->priv;
-	u32 isr;
-
-	isr = READ_REG(priv, regISR_MSK0);
-	if (unlikely(!isr)) {
-		bdx_enable_interrupts(priv);
-		return IRQ_NONE;	/* Not our interrupt */
-	}
-
-	if (isr & IR_EXTRA)
-		bdx_isr_extra(priv, isr);
-
-	if (isr & (IR_RX_DESC_0 | IR_TX_FREE_0)) {
-		if (likely(LUXOR__SCHEDULE_PREP(&priv->napi, ndev))) {
-			LUXOR__SCHEDULE(&priv->napi, ndev);
-			return IRQ_HANDLED;
-		} else {
-			/*
-			 * NOTE: We get here if an interrupt has slept into
-			 *       the small time window between these lines in
-			 *       bdx_poll:
-			 *   bdx_enable_interrupts(priv);
-			 *   return 0;
-			 *
-			 *   Currently interrupts are disabled (since we
-			 *   read the ISR register) and we have failed to
-			 *       register the next poll. So we read the regs to
-			 *       trigger the chip and allow further interrupts.
-			 */
-			READ_REG(priv, regTXF_WPTR_0);
-			READ_REG(priv, regRXD_WPTR_0);
-		}
-	}
-
-	bdx_enable_interrupts(priv);
-	return IRQ_HANDLED;
-}
-
-#else
-/* bdx_isr - Interrupt Service Routine for Bordeaux NIC
- * @irq    - Interrupt number
- * @ndev   - Network device
- * @regs   - CPU registers
- *
- * Return IRQ_NONE if it was not our interrupt, IRQ_HANDLED - otherwise
- *
- * Read the ISR register to know interrupt triggers and process them one by
- * one.
- *
- * Interrupt triggers are:
- *    RX_DESC - A new packet has arrived and RXD fifo holds its descriptor
- *    RX_FREE - The number of free Rx buffers in RXF fifo gets low
- *    TX_FREE - A packet was transmitted and RXF fifo holds its descriptor
- */
-static irqreturn_t bdx_isr_napi(int irq, void *dev, struct pt_regs *regs)
-{
-	struct net_device *ndev = (struct net_device *)dev;
-	struct bdx_priv *priv = ndev->priv;
-	u32 isr;
-
-	isr = READ_REG(priv, regISR_MSK0);
-	if (unlikely(!isr)) {
-		bdx_enable_interrupts(priv);
-		return IRQ_NONE;	/* Not our interrupt */
-	}
-
-	if (isr & IR_EXTRA)
-		bdx_isr_extra(priv, isr);
-
-	if (isr & (IR_RX_DESC_0 | IR_TX_FREE_0)) {
-		if (likely(LUXOR__SCHEDULE_PREP(&priv->napi, ndev))) {
-			LUXOR__SCHEDULE(&priv->napi, ndev);
-			return IRQ_HANDLED;
-		} else {
-			/*
-			 * NOTE: We get here if an interrupt has slept into
-			 *       the small time window between these lines in
-			 *       bdx_poll:
-			 *   bdx_enable_interrupts(priv);
-			 *   return 0;
-			 *
-			 *   Currently interrupts are disabled (since we
-			 *       read the ISR register) and we have failed to
-			 *       register the next poll. So we read the regs to
-			 *       trigger the chip and allow further interrupts.
-			 */
-			READ_REG(priv, regTXF_WPTR_0);
-			READ_REG(priv, regRXD_WPTR_0);
-		}
-	}
-
-	bdx_enable_interrupts(priv);
-	return IRQ_HANDLED;
-}
-
-#endif
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 28) || (defined VM_KLNX)
 static int bdx_poll(struct napi_struct *napi, int budget)
 {
 	struct bdx_priv *priv = container_of(napi, struct bdx_priv, napi);
@@ -1082,53 +862,6 @@ static int bdx_poll(struct napi_struct *napi, int budget)
 	return work_done;
 }
 
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24)
-static int bdx_poll(struct napi_struct *napi, int budget)
-{
-	struct bdx_priv *priv = container_of(napi, struct bdx_priv, napi);
-	int work_done;
-
-	if (!priv->bDeviceRemoved) {
-
-		bdx_tx_cleanup(priv);
-		work_done = bdx_rx_receive(priv, &priv->rxd_fifo0, budget);
-		if (work_done < budget) {
-			netif_rx_complete(priv->ndev, napi);
-			bdx_enable_interrupts(priv);
-		}
-	} else {
-		work_done = budget;
-	}
-
-	return work_done;
-}
-
-#else
-static int bdx_poll(struct net_device *ndev, int *budget_p)
-{
-	struct bdx_priv *priv = ndev->priv;
-	int work_done;
-	int rVal = 0;
-
-	if (!priv->bDeviceRemoved) {
-		bdx_tx_cleanup(priv);
-		work_done =
-		    bdx_rx_receive(priv, &priv->rxd_fifo0,
-				   min(*budget_p, priv->ndev->quota));
-		*budget_p -= work_done;
-		priv->ndev->quota -= work_done;
-		if (work_done < *budget_p) {
-			DBG("rx poll is done. backing to isr-driven\n");
-			netif_rx_complete(ndev);
-			bdx_enable_interrupts(priv);
-		}
-		rVal = 1;
-	}
-
-	return rVal;
-}
-#endif
-
 /* bdx_fw_load - Load the firmware to the NIC
  * @priv       - NIC private structure
  *
@@ -1137,7 +870,6 @@ static int bdx_poll(struct net_device *ndev, int *budget_p)
  * provided by NIC (a NIC can have multiple devices). So all the drivers use
  * semaphore register to load the FW only once.
  */
-
 static int __init bdx_fw_load(struct bdx_priv *priv)
 {
 	int master, i;
@@ -1189,7 +921,6 @@ static void bdx_restore_mac(struct net_device *ndev, struct bdx_priv *priv)
 	DBG("mac0 =%x mac1 =%x mac2 =%x\n",
 	    READ_REG(priv, regUNC_MAC0_A),
 	    READ_REG(priv, regUNC_MAC1_A), READ_REG(priv, regUNC_MAC2_A));
-	return;
 }
 
 static void bdx_CX4_hw_start(struct bdx_priv *priv)
@@ -1207,10 +938,9 @@ static void bdx_CX4_hw_start(struct bdx_priv *priv)
 	WRITE_REG(priv, 0x1030, 0x434);
 	WRITE_REG(priv, 0x1034, 0x434);
 	WRITE_REG(priv, 0x1038, 0x434);
-
 	WRITE_REG(priv, 0x6300, 0x0400);
-
 	WRITE_REG(priv, 0x1014, 0x043);
+
 	for (i = 1000; i; i--) {
 		udelay(50);
 		val = READ_REG(priv, 0x1014);
@@ -1240,32 +970,14 @@ static void bdx_CX4_hw_start(struct bdx_priv *priv)
 	WRITE_REG(priv, regTX_FIFO_SECTION, 0xE00010);
 	WRITE_REG(priv, regRX_FULLNESS, 0);
 	WRITE_REG(priv, regTX_FULLNESS, 0);
-
 	WRITE_REG(priv, regCTRLST, 0xA13);	/*0x93//0x13 */
-
 }
-
-/*
-static  void bdx_setAffinity(u32 irq)
-{
-	//u32 cpu;
-
-	DBG("bdx_setAffinity  nr_cpu_ids 0x%x\n", nr_cpu_ids);
-	DBG("bdx_setAffinity  cpu_online_mask 0x%x\n", *(u32*)cpu_online_mask);
-	if (irq_set_affinity_hint(irq, cpu_online_mask))
-	{
-		ERR("bdx_setAffinity() irq_set_affinity_hint failed!\n");
-	}
-
-} // setAffinity()
-*/
 
 /* bdx_hw_start - Initialize registers and starts HW's Rx and Tx engines
  * @priv    - NIC private structure
  */
 static int bdx_hw_start(struct bdx_priv *priv)
 {
-
 	DBG("********** bdx_hw_start() ************\n");
 	priv->link_speed = 0;	/* -1 */
 	if (priv->phy_type == PHY_TYPE_CX4) {
@@ -1312,12 +1024,10 @@ static int bdx_hw_start(struct bdx_priv *priv)
 	LUXOR__POLL_ENABLE(priv->ndev);
 
 	return 0;
-
 }
 
 static void bdx_hw_stop(struct bdx_priv *priv)
 {
-
 	if ((priv->state & BDX_STATE_HW_STOPPED) == 0) {
 		priv->state |= BDX_STATE_HW_STOPPED;
 		bdx_disable_interrupts(priv);
@@ -1325,11 +1035,9 @@ static void bdx_hw_stop(struct bdx_priv *priv)
 		netif_carrier_off(priv->ndev);
 		netif_stop_queue(priv->ndev);
 	}
-
-	return;
-
 }
 
+/* FIXME: remove either bdx_hw_reset_direct or bdx_hw_reset */
 static int bdx_hw_reset_direct(void __iomem * regs)
 {
 	u32 val, i;
@@ -1342,17 +1050,16 @@ static int bdx_hw_reset_direct(void __iomem * regs)
 	writel(val & ~CLKPLL_SFTRST, regs + regCLKPLL);
 
 	/* Check that the PLLs are locked and reset ended */
-	for (i = 0; i < 70; i++, mdelay(10))
+	for (i = 0; i < 70; i++, mdelay(10)) {
 		if ((readl(regs + regCLKPLL) & CLKPLL_LKD) == CLKPLL_LKD) {
 			udelay(50);
 			/* do any PCI-E read transaction */
 			readl(regs + regRXD_CFG0_0);
 			return 0;
 		}
+	}
 	ERR("HW reset failed\n");
-
 	return 1;		/* failure */
-
 }
 
 static int bdx_hw_reset(struct bdx_priv *priv)
@@ -1367,6 +1074,7 @@ static int bdx_hw_reset(struct bdx_priv *priv)
 		val = READ_REG(priv, regCLKPLL);
 		WRITE_REG(priv, regCLKPLL, val & ~CLKPLL_SFTRST);
 	}
+
 	/* Check that the PLLs are locked and reset ended */
 	for (i = 0; i < 70; i++, mdelay(10)) {
 		if ((READ_REG(priv, regCLKPLL) & CLKPLL_LKD) == CLKPLL_LKD) {
@@ -1374,13 +1082,10 @@ static int bdx_hw_reset(struct bdx_priv *priv)
 			/* Do any PCI-E read transaction */
 			READ_REG(priv, regRXD_CFG0_0);
 			return 0;
-
 		}
 	}
 	ERR("HW reset failed\n");
-
 	return 1;		/* Failure */
-
 }
 
 static int bdx_sw_reset(struct bdx_priv *priv)
@@ -1430,22 +1135,14 @@ static int bdx_sw_reset(struct bdx_priv *priv)
 	WRITE_REG(priv, regRST_PORT, 0);
 	/* 14. Enable Rx */
 	/* Skipped. will be done later */
-	/* 15. Save MAC (obsolete) */
-	/*for (i = regTXD_WPTR_0; i <= regTXF_RPTR_3; i += 0x10) */
-	/*{ */
-
-	/*} */
 
 	return 0;
-
 }
 
 /* bdx_reset - Perform the right type of reset depending on hw type */
 static int bdx_reset(struct bdx_priv *priv)
 {
-
 	return bdx_hw_reset(priv);
-
 }
 
 static int bdx_start(struct bdx_priv *priv, int bLoadFw)
@@ -1518,7 +1215,6 @@ static int bdx_close(struct net_device *ndev)
 	LUXOR__NAPI_DISABLE(&priv->napi);
 	priv->state &= ~BDX_STATE_OPEN;
 	return 0;
-
 }
 
 /**
@@ -1655,23 +1351,6 @@ static int bdx_ioctl_priv(struct net_device *ndev, struct ifreq *ifr, int cmd)
 		PHY_MDIO_WRITE(priv, dev, addr, (u16) (tn40_ioctl.data[2]));
 		break;
 
-#ifdef _TRACE_LOG_
-	case op_TRACE_ON:
-		traceOn();
-		break;
-
-	case op_TRACE_OFF:
-		traceOff();
-		break;
-
-	case op_TRACE_ONCE:
-		traceOnce();
-		break;
-
-	case op_TRACE_PRINT:
-		tracePrint();
-		break;
-#endif
 #ifdef TN40_MEMLOG
 	case OP_MEMLOG_DMESG:
 		memLogDmesg();
@@ -1766,7 +1445,6 @@ static void __bdx_vlan_rx_vid(struct net_device *ndev, uint16_t vid, int enable)
 		val &= ~bit;
 	DBG("new val %x\n", val);
 	WRITE_REG(priv, reg, val);
-	return;
 }
 
 /*
@@ -1775,12 +1453,6 @@ static void __bdx_vlan_rx_vid(struct net_device *ndev, uint16_t vid, int enable)
  * @ndev - Network device
  * @vid  - Vlan vid to add
  */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3,0)
-static void bdx_vlan_rx_add_vid(struct net_device *ndev, uint16_t vid)
-{
-	__bdx_vlan_rx_vid(ndev, vid, 1);
-}
-#else
 #ifdef NETIF_F_HW_VLAN_CTAG_TX
 static int bdx_vlan_rx_add_vid(struct net_device *ndev,
 			       __always_unused __be16 proto, u16 vid)
@@ -1791,7 +1463,6 @@ static int bdx_vlan_rx_add_vid(struct net_device *ndev, u16 vid)
 	__bdx_vlan_rx_vid(ndev, vid, 1);
 	return 0;
 }
-#endif
 
 /*
  * bdx_vlan_rx_kill_vid - A kernel hook for killing VLAN vid in hw filtering
@@ -1800,12 +1471,6 @@ static int bdx_vlan_rx_add_vid(struct net_device *ndev, u16 vid)
  * @ndev - Network device
  * @vid  - Vlan vid to kill
  */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3,0)
-static void bdx_vlan_rx_kill_vid(struct net_device *ndev, unsigned short vid)
-{
-	__bdx_vlan_rx_vid(ndev, vid, 0);
-}
-#else
 #ifdef NETIF_F_HW_VLAN_CTAG_RX
 static int bdx_vlan_rx_kill_vid(struct net_device *ndev,
 				__always_unused __be16 proto, u16 vid)
@@ -1816,26 +1481,6 @@ static int bdx_vlan_rx_kill_vid(struct net_device *ndev, u16 vid)
 	__bdx_vlan_rx_vid(ndev, vid, 0);
 	return 0;
 }
-#endif
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 1,0)
-
-/*
- * bdx_vlan_rx_register - A kernel hook for adding VLAN group
- *
- * @ndev - Network device
- * @grp  - VLAN group
- */
-static void
-bdx_vlan_rx_register(struct net_device *ndev, struct vlan_group *grp)
-{
-	struct bdx_priv *priv = netdev_priv(ndev);
-
-	DBG("device ='%s', group ='%p'\n", ndev->name, grp);
-	priv->vlgrp = grp;
-	return;
-}
-#endif
 
 /**
  * bdx_change_mtu - Change the Maximum Transfer Unit
@@ -1847,7 +1492,6 @@ bdx_vlan_rx_register(struct net_device *ndev, struct vlan_group *grp)
  */
 static int bdx_change_mtu(struct net_device *ndev, int new_mtu)
 {
-
 	if (new_mtu == ndev->mtu)
 		return 0;
 
@@ -1940,11 +1584,11 @@ static int bdx_set_mac(struct net_device *ndev, void *p)
 	struct bdx_priv *priv = netdev_priv(ndev);
 	struct sockaddr *addr = p;
 
-	/*
-	   if (netif_running(dev))
-	   return -EBUSY
-	 */
-	memcpy(ndev->dev_addr, addr->sa_data, ndev->addr_len);
+#if 0
+	if (netif_running(dev))
+		return -EBUSY
+#endif
+		    memcpy(ndev->dev_addr, addr->sa_data, ndev->addr_len);
 	bdx_restore_mac(ndev, priv);
 	return 0;
 }
@@ -1975,8 +1619,7 @@ static u64 bdx_read_l2stat(struct bdx_priv *priv, int reg)
 	return val;
 }
 
-/*Do the statistics-update work*/
-
+/* Do the statistics-update work */
 static void bdx_update_stats(struct bdx_priv *priv)
 {
 	struct bdx_stats *stats = &priv->hw_stats;
@@ -2121,7 +1764,6 @@ static inline void bdx_rxdb_free_elem(struct rxdb *db, unsigned n)
 
 static int bdx_rx_init(struct bdx_priv *priv)
 {
-
 	if (bdx_fifo_init(priv, &priv->rxd_fifo0.m, priv->rxd_size,
 			  regRXD_CFG0_0, regRXD_CFG1_0,
 			  regRXD_RPTR_0, regRXD_WPTR_0))
@@ -2189,7 +1831,6 @@ static void bdx_rx_free_buffers(struct bdx_priv *priv, struct rxdb *db,
  */
 static void bdx_rx_free(struct bdx_priv *priv)
 {
-
 	if (priv->rxdb0) {
 		bdx_rx_free_buffers(priv, priv->rxdb0, &priv->rxf_fifo0);
 		bdx_rxdb_destroy(priv->rxdb0);
@@ -2197,8 +1838,6 @@ static void bdx_rx_free(struct bdx_priv *priv)
 	}
 	bdx_fifo_free(priv, &priv->rxf_fifo0.m);
 	bdx_fifo_free(priv, &priv->rxd_fifo0.m);
-
-	return;
 }
 
 /*************************************************************************
@@ -2341,7 +1980,6 @@ static void bdx_rx_alloc_buffers(struct bdx_priv *priv, struct rxdb *db,
 	dbg_printFifo(&priv->rxf_fifo0.m, (char *)"RXF");
 
 	END_TIMER(bdx_rx_alloc_buffers);
-	return;
 }
 
 static void bdx_recycle_skb(struct bdx_priv *priv, struct rxd_desc *rxdd)
@@ -2373,7 +2011,6 @@ static void bdx_recycle_skb(struct bdx_priv *priv, struct rxd_desc *rxdd)
 			DBG("wrapped descriptor\n");
 		}
 	}
-	return;
 }
 
 static inline u16 tcpCheckSum(u16 * buf, u16 len, u16 * saddr, u16 * daddr,
@@ -2407,27 +2044,13 @@ static inline u16 tcpCheckSum(u16 * buf, u16 len, u16 * saddr, u16 * daddr,
 	/* One's complement of sum */
 
 	return ((u16) (sum));
-
 }
 
 #if defined(USE_PAGED_BUFFERS)
 static void bdx_skb_add_rx_frag(struct sk_buff *skb, int i, struct page *page,
 				int off, int len)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 0) || (defined(RHEL_RELEASE_CODE) && (RHEL_RELEASE_CODE > 1539))
 	skb_add_rx_frag(skb, 0, page, off, len, SKB_TRUESIZE(len));
-#else
-#if (!defined SKB_DATA_ALIGN)
-#define SKB_DATA_ALIGN(X)	(((X) + (SMP_CACHE_BYTES - 1)) & ~(SMP_CACHE_BYTES - 1))
-#endif
-#if (!defined SKB_TRUESIZE)
-#define SKB_TRUESIZE(X) ((X) + SKB_DATA_ALIGN(sizeof(struct sk_buff)) +	SKB_DATA_ALIGN(sizeof(struct skb_shared_info)))
-#endif
-	skb_fill_page_desc(skb, i, page, off, len);
-	skb->len += len;
-	skb->data_len += len;
-	skb->truesize += SKB_TRUESIZE(len);
-#endif
 }
 #endif
 
@@ -2477,7 +2100,6 @@ static int bdx_rx_error(char *pkt, u32 rxd_err, u16 len)
 	}
 
 	return rVal;
-
 }
 
 /* bdx_rx_receive - Receives full packet from RXD fifo and pass them to the OS.
@@ -2586,9 +2208,8 @@ static int bdx_rx_receive(struct bdx_priv *priv, struct rxd_fifo *f, int budget)
 		len = CPU_CHIP_SWAP16(rxdd->len);
 		rxd_vlan = CPU_CHIP_SWAP16(rxdd->rxd_vlan);
 		print_rxdd(rxdd, rxd_val1, len, rxd_vlan);
-		traceAdd(0x11, len);
-		/* CHECK FOR ERRORS */
 
+		/* CHECK FOR ERRORS */
 		if (unlikely(rxd_err = GET_RXD_ERR(rxd_val1))) {
 			int bErr = 1;
 
@@ -2608,9 +2229,6 @@ static int bdx_rx_receive(struct bdx_priv *priv, struct rxd_fifo *f, int budget)
 				bErr = bdx_rx_error(pkt, rxd_err, len);
 			}
 			if (bErr) {
-
-/*				int i; */
-
 				WRN("rxd_err = 0x%x\n", rxd_err);
 				priv->net_stats.rx_errors++;
 				bdx_recycle_skb(priv, rxdd);
@@ -2648,35 +2266,13 @@ static int bdx_rx_receive(struct bdx_priv *priv, struct rxd_fifo *f, int budget)
 			     0) ? CHECKSUM_NONE : CHECKSUM_UNNECESSARY;
 
 #if defined(USE_RSS)
-
-#if ( LINUX_VERSION_CODE >= KERNEL_VERSION(3,15,0) )
 			skb->hash = CPU_CHIP_SWAP32(rxdd->rss_hash);
 #if !defined(RHEL_RELEASE_CODE)
 			skb->l4_hash = 1;
 #endif
 			DBG("rxhash    = 0x%x\n", skb->hash);
-
-#else
-			skb->rxhash = CPU_CHIP_SWAP32(rxdd->rss_hash);
-#if !defined(RHEL_RELEASE_CODE)
-			skb->l4_rxhash = 1;
-#endif
-			DBG("rxhash    = 0x%x\n", skb->rxhash);
 #endif
 
-#endif
-#if 0
-			{
-				char *pkt =
-				    ((char *)page_address(dm->page) + dm->off);
-				int i;
-				MSG("RX: len=%d\n", len);
-				for (i = 0; i < len; i = i + 16)
-					ERR("%.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x %.2x ", (0xff & pkt[i]), (0xff & pkt[i + 1]), (0xff & pkt[i + 2]), (0xff & pkt[i + 3]), (0xff & pkt[i + 4]), (0xff & pkt[i + 5]), (0xff & pkt[i + 6]), (0xff & pkt[i + 7]), (0xff & pkt[i + 8]), (0xff & pkt[i + 9]), (0xff & pkt[i + 10]), (0xff & pkt[i + 11]), (0xff & pkt[i + 12]), (0xff & pkt[i + 13]), (0xff & pkt[i + 14]), (0xff & pkt[i + 15]));
-				MSG("\n");
-
-			}
-#endif
 			bdx_skb_add_rx_frag(skb, 0, dm->page, dm->off, len);
 			bdx_rxdb_free_elem(db, rxdd->va_lo);
 /*
@@ -2693,26 +2289,12 @@ static int bdx_rx_receive(struct bdx_priv *priv, struct rxd_fifo *f, int budget)
 			/* PROCESS PACKET */
 
 			START_TIMER(bdx_rx_receive_5);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 1,0)
-			if (priv->vlgrp && GET_RXD_VTAG(rxd_val1)) {	/* Vlan case */
-				vlan_gro_frags(&priv->napi, priv->vlgrp,
-					       GET_RXD_VLAN_TCI(rxd_vlan));
-			} else
-#elif  LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
-			if (GET_RXD_VTAG(rxd_val1)) {	/* Vlan case */
-				__vlan_hwaccel_put_tag(skb,
-						       le16_to_cpu
-						       (GET_RXD_VLAN_TCI
-							(rxd_vlan)));
-			}
-#else
 			if (GET_RXD_VTAG(rxd_val1)) {	/* Vlan case */
 				__vlan_hwaccel_put_tag(skb, htons(ETH_P_8021Q),
 						       le16_to_cpu
 						       (GET_RXD_VLAN_TCI
 							(rxd_vlan)));
 			}
-#endif
 			napi_gro_frags(&priv->napi);
 			END_TIMER(bdx_rx_receive_5);
 
@@ -2759,9 +2341,7 @@ static int bdx_rx_receive(struct bdx_priv *priv, struct rxd_fifo *f, int budget)
 
 			skb_put(skb, len);
 			skb->dev = priv->ndev;
-			/*
-			 * Note: Non-IP packets aren't checksum-offloaded.
-			 */
+			/* Note: Non-IP packets aren't checksum-offloaded. */
 			skb->ip_summed =
 			    (pkt_id ==
 			     0) ? CHECKSUM_NONE : CHECKSUM_UNNECESSARY;
@@ -2770,27 +2350,12 @@ static int bdx_rx_receive(struct bdx_priv *priv, struct rxd_fifo *f, int budget)
 			/* PROCESS PACKET */
 
 			START_TIMER(bdx_rx_receive_4);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 1,0)
-			if (priv->vlgrp && GET_RXD_VTAG(rxd_val1)) {	/* Vlan case */
-				LUXOR__VLAN_RECEIVE(&priv->napi, priv->vlgrp,
-						    GET_RXD_VLAN_TCI(rxd_vlan),
-						    skb);
-			} else	/* Regular case */
-#elif  LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
-			if (GET_RXD_VTAG(rxd_val1)) {	/* Vlan case */
-				__vlan_hwaccel_put_tag(skb,
-						       le16_to_cpu
-						       (GET_RXD_VLAN_TCI
-							(rxd_vlan)));
-			}
-#else
 			if (GET_RXD_VTAG(rxd_val1)) {	/* Vlan case */
 				__vlan_hwaccel_put_tag(skb, htons(ETH_P_8021Q),
 						       le16_to_cpu
 						       (GET_RXD_VLAN_TCI
 							(rxd_vlan)));
 			}
-#endif
 			LUXOR__RECEIVE(&priv->napi, skb);
 			END_TIMER(bdx_rx_receive_4);
 		}
@@ -2811,16 +2376,12 @@ static int bdx_rx_receive(struct bdx_priv *priv, struct rxd_fifo *f, int budget)
 	WRITE_REG(priv, f->m.reg_RPTR, f->m.rptr & TXF_WPTR_WR_PTR);
 
 	START_TIMER(bdx_rx_receive_6);
-	traceAdd(0x1A, 0);
 	bdx_rx_alloc_buffers(priv, priv->rxdb0, &priv->rxf_fifo0);
 	END_TIMER(bdx_rx_receive_6);
 
 	END_TIMER(bdx_rx_receive);
 
-	traceAdd(0x1f, 0);
-
 	return done;
-
 }
 
 /*************************************************************************
@@ -3061,18 +2622,10 @@ static inline int bdx_tx_map_skb(struct bdx_priv *priv, struct sk_buff *skb,
 #endif
 		/* remaining frags */
 		for (i = copyFrags; i < nrFrags; i++) {
-
 			frag = &skb_shinfo(skb)->frags[i];
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 2,0)
-			dmaAddr =
-			    pci_map_page(priv->pdev, frag->page,
-					 frag->page_offset, frag->size,
-					 PCI_DMA_TODEVICE);
-#else
 			dmaAddr =
 			    skb_frag_dma_map(&priv->pdev->dev, frag, 0,
 					     frag->size, PCI_DMA_TODEVICE);
-#endif
 			bdx_tx_db_inc_wptr(db);
 			bdx_setTxdb(db, dmaAddr, frag->size);
 			bdx_setPbl(pbl++, db->wptr->addr.dma, db->wptr->len);
@@ -3332,7 +2885,6 @@ static int bdx_tx_transmit(struct sk_buff *skb, struct net_device *ndev)
 	}
 #endif
 	return rVal;
-
 }
 
 /* bdx_tx_cleanup - Clean the TXF fifo, run in the context of IRQ.
@@ -3414,7 +2966,6 @@ static void bdx_tx_cleanup(struct bdx_priv *priv)
 #else
 	netif_tx_unlock(priv->ndev);
 #endif
-
 }
 
 /* bdx_tx_free_skbs - Free all skbs from TXD fifo.
@@ -3434,11 +2985,9 @@ static void bdx_tx_free_skbs(struct bdx_priv *priv)
 			dev_kfree_skb(db->rptr->addr.skb);
 		bdx_tx_db_inc_rptr(db);
 	}
-	return;
 }
 
 /* bdx_tx_free - Free all Tx resources */
-
 static void bdx_tx_free(struct bdx_priv *priv)
 {
 
@@ -3523,31 +3072,21 @@ static void bdx_tx_push_desc_safe(struct bdx_priv *priv, void *data, int size)
 		size -= avail;
 		data += avail;
 	}
-	return;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 31)
 static const struct net_device_ops bdx_netdev_ops = {
 	.ndo_open = bdx_open,
 	.ndo_stop = bdx_close,
 	.ndo_start_xmit = bdx_tx_transmit,
 	.ndo_validate_addr = eth_validate_addr,
 	.ndo_do_ioctl = bdx_ioctl,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 2, 0)
-	.ndo_set_multicast_list = bdx_setmulti,
-#else
 	.ndo_set_rx_mode = bdx_setmulti,
-#endif
 	.ndo_get_stats = bdx_get_stats,
 	.ndo_change_mtu = bdx_change_mtu,
 	.ndo_set_mac_address = bdx_set_mac,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 1,0)
-	.ndo_vlan_rx_register = bdx_vlan_rx_register,
-#endif
 	.ndo_vlan_rx_add_vid = bdx_vlan_rx_add_vid,
 	.ndo_vlan_rx_kill_vid = bdx_vlan_rx_kill_vid,
 };
-#endif
 
 static int bdx_get_ports_by_id(int vendor, int device)
 {
@@ -3608,12 +3147,10 @@ static int bdx_get_phy_by_id(int vendor, int device, int subsystem, int port)
  * /usr/src/linux/Documentation/DMA-{API, mapping}.txt
  *
  */
-
-/* TBD: netif_msg should be checked and implemented. I disable it for now */
-
 static int __init bdx_probe(struct pci_dev *pdev,
 			    const struct pci_device_id *ent)
 {
+/* TBD: netif_msg should be checked and implemented. I disable it for now */
 	struct net_device *ndev;
 	struct bdx_priv *priv;
 	int err, pci_using_dac;
@@ -3626,10 +3163,9 @@ static int __init bdx_probe(struct pci_dev *pdev,
 	if (!nic) {
 		ERR("bdx_probe() no memory\n");
 		return -ENOMEM;
-
 	}
 
-    /************** pci *****************/
+	/************** pci *****************/
 	if ((err = pci_enable_device(pdev)))	/* It triggers interrupt, dunno
 						   why. */
 		goto err_pci;	/* it's not a problem though */
@@ -3693,34 +3229,19 @@ static int __init bdx_probe(struct pci_dev *pdev,
 	} else {
 		DBG("HW does not support MSI\n");
 	}
-    /************** netdev **************/
+
+	/************** netdev **************/
 	if (!(ndev = alloc_etherdev(sizeof(struct bdx_priv)))) {
 		err = -ENOMEM;
 		ERR("alloc_etherdev failed\n");
 		goto err_out_iomap;
 	}
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 31)
+
 	ndev->netdev_ops = &bdx_netdev_ops;
 	ndev->tx_queue_len = BDX_NDEV_TXQ_LEN;
-#else
-	ndev->open = bdx_open;
-	ndev->stop = bdx_close;
-	ndev->hard_start_xmit = bdx_tx_transmit;
-	ndev->tx_timeout = bdx_tx_timeout;
-	ndev->do_ioctl = bdx_ioctl;
-	ndev->set_multicast_list = bdx_setmulti;
-	ndev->get_stats = bdx_get_stats;
-	ndev->change_mtu = bdx_change_mtu;
-	ndev->set_mac_address = bdx_set_mac;
-	ndev->tx_queue_len = BDX_NDEV_TXQ_LEN;
-	ndev->vlan_rx_register = bdx_vlan_rx_register;
-	ndev->vlan_rx_add_vid = bdx_vlan_rx_add_vid;
-	ndev->vlan_rx_kill_vid = bdx_vlan_rx_kill_vid;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24) && (!defined VM_KLNX)
-	ndev->poll = bdx_poll;
-	ndev->weight = 64;
-#endif
+#if 0
+	bdx_ethtool_ops(ndev);	/* Ethtool interface */
 #endif
 
 	/*
@@ -3752,15 +3273,12 @@ static int __init bdx_probe(struct pci_dev *pdev,
 	if (pci_using_dac)
 		ndev->features |= NETIF_F_HIGHDMA;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 26)
 	ndev->vlan_features = (NETIF_F_IP_CSUM |
 			       NETIF_F_SG |
 			       NETIF_F_TSO | NETIF_F_GRO | NETIF_F_RXHASH);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37)
 	if (pci_using_dac)
 		ndev->vlan_features |= NETIF_F_HIGHDMA;
-#endif
-#endif
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
 	ndev->min_mtu = ETH_ZLEN;
 	ndev->max_mtu = BDX_MAX_MTU;
@@ -3785,7 +3303,8 @@ static int __init bdx_probe(struct pci_dev *pdev,
 	} else {
 		priv->stats_flag = 1;
 	}
-	/*Init PHY */
+
+	/* Init PHY */
 	priv->subsystem_vendor = priv->pdev->subsystem_vendor;
 	priv->subsystem_device = priv->pdev->subsystem_device;
 	phy =
@@ -3801,7 +3320,6 @@ static int __init bdx_probe(struct pci_dev *pdev,
 	/* Initialize fifo sizes. */
 	priv->txd_size = 3;
 	priv->txf_size = 3;
-
 	priv->rxd_size = 3;
 	priv->rxf_size = 3;
 
@@ -3819,9 +3337,7 @@ static int __init bdx_probe(struct pci_dev *pdev,
 	spin_lock_init(&priv->tx_lock);
 	ndev->features |= NETIF_F_LLTX;
 #endif
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39)
 	ndev->hw_features |= ndev->features;
-#endif
 
 	if (bdx_read_mac(priv)) {
 		ERR("load MAC address failed\n");
@@ -3866,7 +3382,7 @@ static int __init bdx_probe(struct pci_dev *pdev,
 #endif
 
 	return 0;
-	ERR("bdx_probe() %d\n", err);
+
 err_out_free:
 	free_netdev(ndev);
 err_out_iomap:
@@ -3887,7 +3403,6 @@ err_pci:
 	vfree(nic);
 
 	return err;
-
 }
 
 /****************** Ethtool interface *********************/
@@ -3975,11 +3490,9 @@ static int bdx_set_settings(struct net_device *netdev, struct ethtool_cmd *ecmd)
 	DBG("ecmd->cmd=%x\n", ecmd->cmd);
 
 	return priv->phy_ops.set_settings(netdev, ecmd);
-
 }
 
 #ifdef ETHTOOL_GLINKSETTINGS
-
 int bdx_get_link_ksettings(struct net_device *netdev,
 			   struct ethtool_link_ksettings *cmd)
 {
@@ -3998,20 +3511,16 @@ int bdx_get_link_ksettings(struct net_device *netdev,
 	return priv->phy_ops.get_link_ksettings(netdev, cmd);
 
 }
-
 #endif
 
 #ifdef ETHTOOL_SLINKSETTINGS
-
 int bdx_set_link_ksettings(struct net_device *netdev,
 			   const struct ethtool_link_ksettings *cmd)
 {
 	struct bdx_priv *priv = netdev_priv(netdev);
 
 	return priv->phy_ops.set_link_ksettings(netdev, cmd);
-
 }
-
 #endif
 
 /*
@@ -4037,28 +3546,6 @@ bdx_get_drvinfo(struct net_device *netdev, struct ethtool_drvinfo *drvinfo)
 	drvinfo->regdump_len = 0;
 	drvinfo->eedump_len = 0;
 }
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3,0)
-/*
- * bdx_get_rx_csum - Report whether receive checksums are turned on or off.
- *
- * @netdev
- */
-static u32 bdx_get_rx_csum(struct net_device *netdev)
-{
-	return 1;		/* Always on */
-}
-
-/*
- * bdx_get_tx_csum - Report whether transmit checksums are turned on or off.
- *
- * @netdev
- */
-static u32 bdx_get_tx_csum(struct net_device *netdev)
-{
-	return (netdev->features & NETIF_F_IP_CSUM) != 0;
-}
-#endif
 
 /*
  * bdx_get_coalesce - Get interrupt coalescing parameters.
@@ -4140,25 +3627,17 @@ bdx_set_coalesce(struct net_device *netdev, struct ethtool_coalesce *ecoal)
 }
 
 /* Convert RX fifo size to number of pending packets */
-
 static inline int bdx_rx_fifo_size_to_packets(int rx_size)
 {
 	return ((FIFO_SIZE * (1 << rx_size)) / sizeof(struct rxf_desc));
 }
 
 /* Convert TX fifo size to number of pending packets */
-
 static inline int bdx_tx_fifo_size_to_packets(int tx_size)
 {
 	return ((FIFO_SIZE * (1 << tx_size)) / BDX_TXF_DESC_SZ);
 }
 
-/*
- * bdx_get_ringparam - Report ring sizes.
- *
- * @netdev
- * @ring
- */
 static void
 bdx_get_ringparam(struct net_device *netdev, struct ethtool_ringparam *ring)
 {
@@ -4171,12 +3650,6 @@ bdx_get_ringparam(struct net_device *netdev, struct ethtool_ringparam *ring)
 	ring->tx_pending = bdx_tx_fifo_size_to_packets(priv->txd_size);
 }
 
-/*
- * bdx_set_ringparam - Set ring sizes.
- *
- * @netdev
- * @ring
- */
 static int
 bdx_set_ringparam(struct net_device *netdev, struct ethtool_ringparam *ring)
 {
@@ -4217,12 +3690,6 @@ bdx_set_ringparam(struct net_device *netdev, struct ethtool_ringparam *ring)
 	return 0;
 }
 
-/*
- * bdx_get_strings - Return a set of strings that describe the requested
- *           objects.
- * @netdev
- * @data
- */
 static void bdx_get_strings(struct net_device *netdev, u32 stringset, u8 * data)
 {
 	switch (stringset) {
@@ -4236,13 +3703,6 @@ static void bdx_get_strings(struct net_device *netdev, u32 stringset, u8 * data)
 	}
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25)
-
-/*
- * bdx_get_sset_count - Return the number of statistics or tests.
- *
- * @netdev
- */
 static int bdx_get_sset_count(struct net_device *netdev, int stringset)
 {
 	struct bdx_priv *priv = netdev_priv(netdev);
@@ -4257,29 +3717,6 @@ static int bdx_get_sset_count(struct net_device *netdev, int stringset)
 	}
 }
 
-#endif
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
-/*
- * bdx_get_stats_count - Return the number of 64bit statistics counters.
- *
- * @netdev
- */
-static int bdx_get_stats_count(struct net_device *netdev)
-{
-	struct bdx_priv *priv = netdev_priv(netdev);
-	BDX_ASSERT(ARRAY_SIZE(bdx_stat_names) !=
-		   sizeof(struct bdx_stats) / sizeof(u64));
-	return ((priv->stats_flag) ? ARRAY_SIZE(bdx_stat_names) : 0);
-}
-#endif
-
-/*
- * bdx_get_ethtool_stats - Return device's hardware L2 statistics.
- *
- * @netdev
- * @stats
- * @data
- */
 static void bdx_get_ethtool_stats(struct net_device *netdev,
 				  struct ethtool_stats *stats, u64 * data)
 {
@@ -4295,10 +3732,7 @@ static void bdx_get_ethtool_stats(struct net_device *netdev,
 	}
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0)
-
 /* Blink LED's for finding board */
-
 static int bdx_set_phys_id(struct net_device *netdev,
 			   enum ethtool_phys_id_state state)
 {
@@ -4327,57 +3761,8 @@ static int bdx_set_phys_id(struct net_device *netdev,
 	return rval;
 }
 
-#else
-
-static void bdx_blink_callback(unsigned long data)
-{
-	struct bdx_priv *priv = (struct bdx_priv *)data;
-
-	priv->phy_ops.leds[0] = !priv->phy_ops.leds[0];
-	if (priv->phy_ops.leds[0]) {
-		priv->phy_ops.ledset(priv, PHY_LEDS_ON);
-	} else {
-		priv->phy_ops.ledset(priv, PHY_LEDS_OFF);
-	}
-
-	mod_timer(&priv->blink_timer, jiffies + HZ);
-}
-
-/*
- * bdx_phys_id - Blink the device led.
- * @netdev
- * @data       - Number of seconds to blink (0 - forever)
- */
-static int bdx_phys_id(struct net_device *netdev, u32 data)
-{
-	struct bdx_priv *priv = netdev_priv(netdev);
-
-	if (data == 0)
-		data = INT_MAX;
-
-	if (!priv->blink_timer.function) {
-		init_timer(&priv->blink_timer);
-		priv->blink_timer.function = bdx_blink_callback;
-		priv->blink_timer.data = (unsigned long)priv;
-	}
-	priv->phy_ops.ledset(priv, PHY_LEDS_SAVE);
-	mod_timer(&priv->blink_timer, jiffies);
-	msleep_interruptible(data * 1000);
-	del_timer_sync(&priv->blink_timer);
-	priv->phy_ops.ledset(priv, PHY_LEDS_RESTORE);
-	return 0;
-}
-
-#endif
 #ifdef _EEE_
 #ifdef ETHTOOL_GEEE
-
-/*
- * bdx_get_eee - Get device-specific EEE settings
- *
- * @netdev
- * @ecmd
- */
 static int bdx_get_eee(struct net_device *netdev, struct ethtool_eee *edata)
 {
 	int err;
@@ -4391,17 +3776,10 @@ static int bdx_get_eee(struct net_device *netdev, struct ethtool_eee *edata)
 	}
 
 	return err;
-
 }
 #endif
-#ifdef ETHTOOL_SEEE
 
-/*
- * bdx_set_eee - set device-specific EEE settings
- *
- * @netdev
- * @ecmd
- */
+#ifdef ETHTOOL_SEEE
 static int bdx_set_eee(struct net_device *netdev, struct ethtool_eee *edata)
 {
 	int err;
@@ -4415,16 +3793,10 @@ static int bdx_set_eee(struct net_device *netdev, struct ethtool_eee *edata)
 		err = priv->phy_ops.set_eee(priv);
 	}
 	return err;
-
 }
 #endif
-#endif
+#endif /* _EEE_ */
 
-/*
- * bdx_ethtool_ops - Ethtool interface implementation.
- *
- * @netdev
- */
 static void bdx_ethtool_ops(struct net_device *netdev)
 {
 
@@ -4451,25 +3823,10 @@ static void bdx_ethtool_ops(struct net_device *netdev)
 		.set_eee = bdx_set_eee,
 #endif
 #endif
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3,0)
-		.get_rx_csum = bdx_get_rx_csum,
-		.get_tx_csum = bdx_get_tx_csum,
-		.get_sg = ethtool_op_get_sg,
-		.get_tso = ethtool_op_get_tso,
-#endif
 		.get_strings = bdx_get_strings,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25)
 		.get_sset_count = bdx_get_sset_count,
-#endif
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
-		.get_stats_count = bdx_get_stats_count,
-#endif
 		.get_ethtool_stats = bdx_get_ethtool_stats,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0)
 		.set_phys_id = bdx_set_phys_id,
-#else
-		.phys_id = bdx_phys_id,
-#endif
 	};
 #if defined(_EEE_) && (defined(RHEL6_ETHTOOL_OPS_EXT_STRUCT))
 	static struct ethtool_ops_ext bdx_ethtool_ops_ext = {
@@ -4483,12 +3840,9 @@ static void bdx_ethtool_ops(struct net_device *netdev)
 	set_ethtool_ops_ext(netdev, &bdx_ethtool_ops_ext);
 #endif
 
-#if ( LINUX_VERSION_CODE >= KERNEL_VERSION(3,16,0) )
 #define SET_ETHTOOL_OPS(netdev, ops) ((netdev)->ethtool_ops = (ops))
-#endif /* >= 3.16.0 */
 
 	SET_ETHTOOL_OPS(netdev, &bdx_ethtool_ops);
-
 }
 
 /**
@@ -4531,9 +3885,6 @@ static void __exit bdx_remove(struct pci_dev *pdev)
 	spin_unlock(&g_lock);
 #endif
 	MSG("Device removed\n");
-
-	return;
-
 }
 
 #ifdef _DRIVER_RESUME_
@@ -4554,7 +3905,6 @@ static int bdx_suspend(struct device *dev)
 	err = pci_prepare_to_sleep(pdev);
 	DBG("pci_prepare_to_sleep = %d\n", err);
 	return 0;
-
 }
 
 static int bdx_resume(struct device *dev)
@@ -4588,7 +3938,6 @@ static int bdx_resume(struct device *dev)
 	} while (0);
 
 	return rc;
-
 }
 #endif
 
@@ -4600,6 +3949,7 @@ __refdata static struct dev_pm_ops bdx_pm_ops = {
 	.restore_noirq = bdx_resume,
 };
 #endif
+
 __refdata static struct pci_driver bdx_pci_driver = {
 	.name = BDX_DRV_NAME,
 	.id_table = bdx_pci_tbl,
@@ -4607,22 +3957,16 @@ __refdata static struct pci_driver bdx_pci_driver = {
 	.remove = __exit_p(bdx_remove),
 #ifdef _DRIVER_RESUME_
 	.driver.pm = &bdx_pm_ops,
-/*	.suspend  = bdx_suspend, */
-/*	.resume   = bdx_resume, */
 #endif
 
 };
 
 #ifndef _DRIVER_RESUME_
-
 int bdx_no_hotplug(struct pci_dev *pdev, const struct pci_device_id *ent)
 {
-
 	ERR("rescan/hotplug is *NOT* supported!, please use rmmod/insmod instead\n");
 	return -1;
-
 }
-
 #endif
 
 static void __init bdx_scan_pci(void)
@@ -4659,44 +4003,11 @@ static void __init bdx_scan_pci(void)
 #endif
 	spin_unlock(&g_lock);
 	MSG("detected %d cards, %d loaded\n", nDevices, nLoaded);
-
 }
 
 static void bdx_print_phys(void)
 {
-	MSG("Supported phys : %s %s %s %s %s %s %s\n",
-#ifdef PHY_MV88X3120
-	    "MV88X3120",
-#else
-	    "",
-#endif
-#ifdef PHY_MV88X3310
-	    "MV88X3310",
-#else
-	    "",
-#endif
-#ifdef PHY_MV88E2010
-	    "MV88E2010",
-#else
-	    "",
-#endif
-#ifdef PHY_QT2025
-	    "QT2025",
-#else
-	    "",
-#endif
-#ifdef PHY_TLK10232
-	    "TLK10232",
-#else
-	    "",
-#endif
-#ifdef PHY_AQR105
-	    "AQR105",
-#else
-	    "",
-#endif
-	    bdx_pci_driver.suspend != NULL ? "in driver suspend" : "");
-
+	MSG("Supported phys : QT2025, TLK10232, AQR105\n");
 }
 
 /*
@@ -4714,7 +4025,6 @@ static int __init bdx_module_init(void)
 #ifdef __BIG_ENDIAN
 	bdx_firmware_endianess();
 #endif
-	traceInit();
 	init_txd_sizes();
 	print_driver_id();
 	return pci_register_driver(&bdx_pci_driver);
@@ -4727,7 +4037,6 @@ static void __exit bdx_module_exit(void)
 
 	pci_unregister_driver(&bdx_pci_driver);
 	MSG("Driver unloaded\n");
-	return;
 }
 
 module_exit(bdx_module_exit);

@@ -12,7 +12,6 @@ int CX4_get_settings(struct net_device *netdev, struct ethtool_cmd *ecmd)
 	ecmd->autoneg = AUTONEG_DISABLE;
 
 	return 0;
-
 }
 
 int CX4_set_settings(struct net_device *netdev, struct ethtool_cmd *ecmd)
@@ -20,7 +19,6 @@ int CX4_set_settings(struct net_device *netdev, struct ethtool_cmd *ecmd)
 	ERR("CX4_set_settings() not implemented\n");
 
 	return -EPERM;
-
 }
 
 #ifdef ETHTOOL_GLINKSETTINGS
@@ -46,19 +44,16 @@ int CX4_get_link_ksettings(struct net_device *netdev,
 	       sizeof(cmd->link_modes.advertising));
 
 	return 0;
-
 }
 #endif
 
 #ifdef ETHTOOL_SLINKSETTINGS
-
 int CX4_set_link_ksettings(struct net_device *netdev,
 			   const struct ethtool_link_ksettings *cmd)
 {
 	ERR("CX4_set_link_ksettings() not implemented\n");
 
 	return -EPERM;
-
 }
 #endif
 

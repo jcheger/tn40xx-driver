@@ -445,10 +445,9 @@ static int AQR105_get_link_speed(struct bdx_priv *priv)
 	}
 
 	return link;
-
 }
 
-u32 AQR105_link_changed(struct bdx_priv *priv)
+u32 AQR105_link_changed(struct bdx_priv * priv)
 {
 	u32 link, speed;
 
@@ -500,7 +499,6 @@ u32 AQR105_link_changed(struct bdx_priv *priv)
 	}
 
 	return link;
-
 }
 
 void AQR105_leds(struct bdx_priv *priv, enum PHY_LEDS_OP op)

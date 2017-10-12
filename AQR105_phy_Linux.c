@@ -139,13 +139,11 @@ int AQR105_get_link_ksettings(struct net_device *netdev,
 	       sizeof(cmd->link_modes.advertising));
 
 	return 0;
-
 }
 
 #endif
 
 #ifdef ETHTOOL_SLINKSETTINGS
-
 int AQR105_set_link_ksettings(struct net_device *netdev,
 			      const struct ethtool_link_ksettings *cmd)
 {
@@ -191,7 +189,6 @@ int AQR105_set_link_ksettings(struct net_device *netdev,
 	}
 
 	return 0;
-
 }
 
 #endif

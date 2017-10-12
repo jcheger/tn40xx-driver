@@ -1,29 +1,6 @@
 #include "tn40.h"
 #include "TLK10232_phy.h"
 
-void sff_reset(struct bdx_priv *priv);
-int sff_read_str(struct bdx_priv *priv, unsigned char sfp_adr,
-		 unsigned char addr, int len, char *buf);
-int sff_write_str(struct bdx_priv *priv, unsigned char sfp_adr,
-		  unsigned char addr, int len, char *buf);
-int i2c_write_byte(struct bdx_priv *priv, int send_start, int send_stop,
-		   unsigned char byte);
-unsigned char i2c_read_byte(struct bdx_priv *priv, int nack, int send_stop);
-int i2c_read_bit(struct bdx_priv *priv);
-int i2c_write_bit(struct bdx_priv *priv, int bit);
-int i2c_start_cond(struct bdx_priv *priv, int I2C_started);
-int i2c_stop_cond(struct bdx_priv *priv);
-int i2c_SCL_stretch(struct bdx_priv *priv);
-int read_sfp_id(struct bdx_priv *priv);
-void set_GPIO(struct bdx_priv *priv);
-void clear_GPIO_N(struct bdx_priv *priv, u32 n);
-u32 read_GPIO_N(struct bdx_priv *priv, u32 n);
-int TLK10232_phy_config(struct bdx_priv *priv);
-int TLK10232_mdio_reset(struct bdx_priv *priv, int port, unsigned short phy);
-u32 TLK10232_get_link_speed(struct bdx_priv *priv);
-u32 TLK10232_link_changed(struct bdx_priv *priv);
-void TLK10232_leds(struct bdx_priv *priv, enum PHY_LEDS_OP op);
-
 #define LINK_LOOP_MAX   (80)
 
 void TLK10232_register_settings(struct bdx_priv *priv);
@@ -36,12 +13,6 @@ enum _SFP_MOD_TYPE {
 	SFP_10G_DA
 };
 
-#define TEST_SFP_OM
-
-#ifdef TEST_SFP_OM
-
-#define USE_LOG_I2C 0
-
 #define SCL_GPIO 4
 #define SDA_GPIO 5
 #define TX_DISABLE_GPIO 1
@@ -50,9 +21,9 @@ enum _SFP_MOD_TYPE {
 #define I2C_delay(priv)  udelay(8)
 #define RWDELAY(priv)  udelay(1)
 
-#define WRITE_GPOI_REG(priv,reg,val) do{\
- WRITE_REG(priv, 0x51E0,0x30010000|((reg&0xf)));\
-READ_REG(priv, 0x5030); WRITE_REG(priv, 0x51F0, ( val) );\
+#define WRITE_GPOI_REG(priv,reg,val) do{                   \
+ WRITE_REG(priv, 0x51E0,0x30010000|((reg&0xf)));           \
+ READ_REG(priv, 0x5030); WRITE_REG(priv, 0x51F0, ( val) ); \
 } while(0)
 
 #define READ_GPOI_REG(priv,reg,val) do{\
@@ -60,13 +31,14 @@ READ_REG(priv, 0x5030); WRITE_REG(priv, 0x51F0, ( val) );\
  READ_REG(priv, 0x5030); val=READ_REG(priv, 0x51F0);\
 } while(0)
 
+#define USE_LOG_I2C 0
 #if USE_LOG_I2C
 #define LOG_I2C(fmt, args...)  printk(KERN_ERR fmt, ## args)
 #else
 #define LOG_I2C(fmt, args...)   do {  } while (0)
 #endif
 
-u32 read_GPIO_N(struct bdx_priv *priv, u32 n)
+static u32 read_GPIO_N(struct bdx_priv *priv, u32 n)
 {
 	u32 ret, rw, i, msk = (1 << (n & 0x7));
 	/* get current GPIO state */
@@ -81,10 +53,9 @@ u32 read_GPIO_N(struct bdx_priv *priv, u32 n)
 		ret);
 
 	return ret;
-
 }
 
-void clear_GPIO_N(struct bdx_priv *priv, u32 n)
+static void clear_GPIO_N(struct bdx_priv *priv, u32 n)
 {
 	u32 rw, msk = ~(1 << (n & 0x7));
 	/* get current GPIO state */
@@ -93,21 +64,19 @@ void clear_GPIO_N(struct bdx_priv *priv, u32 n)
 	WRITE_GPOI_REG(priv, 6, (rw & msk));
 	RWDELAY(priv);
 	LOG_I2C("clear_GPIO_N(%x)  6=(%x & %x)\n", n, rw, msk);
-
 }
 
 /* Set SCL as input and return current level of line, 0 or 1 */
-#define read_SCL(p) read_GPIO_N((p),SCL_GPIO)
+#define read_SCL(p) read_GPIO_N((p), SCL_GPIO)
 /* Set SDA as input and return current level of line, 0 or 1 */
-#define read_SDA(p)  read_GPIO_N((p),SDA_GPIO)
+#define read_SDA(p)  read_GPIO_N((p), SDA_GPIO)
 /* Actively drive SCL signal low */
-#define  clear_SCL(p) clear_GPIO_N((p),SCL_GPIO)
+#define  clear_SCL(p) clear_GPIO_N((p), SCL_GPIO)
 /* Actively drive SDA signal low */
-#define  clear_SDA(p) clear_GPIO_N((p),SDA_GPIO)
+#define  clear_SDA(p) clear_GPIO_N((p), SDA_GPIO)
 
-/*return 0-ok 1-CLK==0 */
-
-int i2c_SCL_stretch(struct bdx_priv *priv)
+/* return 0-ok 1-CLK==0 */
+static int i2c_SCL_stretch(struct bdx_priv *priv)
 {
 	int i;
 	for (i = 50; i; i--) {
@@ -117,10 +86,9 @@ int i2c_SCL_stretch(struct bdx_priv *priv)
 	}
 
 	return (i) ? 0 : 1;
-
 }
 
-int i2c_start_cond(struct bdx_priv *priv, int I2C_started)
+static int i2c_start_cond(struct bdx_priv *priv, int I2C_started)
 {
 	int ret = 0;
 	LOG_I2C("TLK10232 i2c_start_cond start=====================\n");
@@ -149,10 +117,9 @@ int i2c_start_cond(struct bdx_priv *priv, int I2C_started)
 		ret ? "Failed " : "OK");
 
 	return ret;
-
 }
 
-int i2c_stop_cond(struct bdx_priv *priv)
+static int i2c_stop_cond(struct bdx_priv *priv)
 {
 	int ret = 0;
 	LOG_I2C("TLK10232 i2c_stop_cond start===================\n");
@@ -178,11 +145,10 @@ int i2c_stop_cond(struct bdx_priv *priv)
 	LOG_I2C("TLK10232 i2c_stop_cond end===================\n");
 
 	return ret;
-
 }
 
 /* Write a bit to I2C bus */
-int i2c_write_bit(struct bdx_priv *priv, int bit)
+static int i2c_write_bit(struct bdx_priv *priv, int bit)
 {
 	int ret = 0;
 	LOG_I2C("TLK10232 i2c_write_bit ==%x start \n", bit);
@@ -205,11 +171,10 @@ int i2c_write_bit(struct bdx_priv *priv, int bit)
 	LOG_I2C("TLK10232 i2c_write_bit  %s\n", ret ? "failed" : "OK");
 
 	return ret;
-
 }
 
 /* Read a bit from I2C bus */
-int i2c_read_bit(struct bdx_priv *priv)
+static int i2c_read_bit(struct bdx_priv *priv)
 {
 	int bit;
 	LOG_I2C("TLK10232 i2c_read_bit start \n");
@@ -224,12 +189,11 @@ int i2c_read_bit(struct bdx_priv *priv)
 	LOG_I2C("TLK10232 i2c_read_bit %x \n", bit);
 
 	return bit ? 1 : 0;
-
 }
 
 /* Write a byte to I2C bus. Return 0 if ack by the slave. */
-int i2c_write_byte(struct bdx_priv *priv, int send_start,
-		   int send_stop, unsigned char byte)
+static int i2c_write_byte(struct bdx_priv *priv, int send_start,
+			  int send_stop, unsigned char byte)
 {
 	unsigned bit;
 	int nack;
@@ -248,11 +212,11 @@ int i2c_write_byte(struct bdx_priv *priv, int send_start,
 	LOG_I2C("i2c_write_byte end nack=%x\n", nack);
 
 	return nack;
-
 }
 
 /* Read a byte from I2C bus */
-unsigned char i2c_read_byte(struct bdx_priv *priv, int nack, int send_stop)
+static unsigned char i2c_read_byte(struct bdx_priv *priv, int nack,
+				   int send_stop)
 {
 	unsigned char byte = 0;
 	unsigned bit;
@@ -268,7 +232,6 @@ unsigned char i2c_read_byte(struct bdx_priv *priv, int nack, int send_stop)
 	LOG_I2C("i2c_read_byte stop byte=%x\n", byte);
 
 	return byte;
-
 }
 
 void sff_reset(struct bdx_priv *priv)
@@ -281,12 +244,9 @@ void sff_reset(struct bdx_priv *priv)
 	i2c_start_cond(priv, 0);
 	I2C_delay(priv);
 	read_SDA(priv);
-
 }
 
-/*
-Return len or 0 on error
-*/
+/* Return len or 0 on error */
 int sff_read_str(struct bdx_priv *priv, unsigned char sfp_adr,
 		 unsigned char addr, int len, char *buf)
 {
@@ -303,22 +263,19 @@ int sff_read_str(struct bdx_priv *priv, unsigned char sfp_adr,
 	DBG("TLK10232 sff_read_str sfp_adr=%x addr=%x start \n", sfp_adr, addr);
 
 	do {
-		err = i2c_write_byte(priv, /*send_start */ 1, /*send_stop */ 0,
-				     sfp_adr & 0xfe);
+		err = i2c_write_byte(priv, 1, 0, sfp_adr & 0xfe);
 		if (err) {
 			err = 1;
 			break;
 		}
 
-		err = i2c_write_byte(priv, /*send_start */ 0, /*send_stop */ 1,
-				     addr & 0xff);
+		err = i2c_write_byte(priv, 0, 1, addr & 0xff);
 		if (err) {
 			err = 2;
 			break;
 		}
 
-		err = i2c_write_byte(priv, /*send_start */ 1, /*send_stop */ 0,
-				     sfp_adr | 1);
+		err = i2c_write_byte(priv, 1, 0, sfp_adr | 1);
 		if (err) {
 			err = 3;
 			break;
@@ -326,11 +283,10 @@ int sff_read_str(struct bdx_priv *priv, unsigned char sfp_adr,
 
 		len--;
 		for (i = 0; i < len; i++) {
-			data =
-			    i2c_read_byte(priv, /*nack */ 0, /*send_stop */ 0);
+			data = i2c_read_byte(priv, 0, 0);
 			buf[i] = data;
 		}
-		data = i2c_read_byte(priv, /*nack */ 1, /*send_stop */ 1);
+		data = i2c_read_byte(priv, 1, 1);
 		buf[i] = data;
 		i++;
 		DBG("TLK10232 sff_read_str sfp_adr=%x addr=%x end \n", sfp_adr,
@@ -343,7 +299,6 @@ int sff_read_str(struct bdx_priv *priv, unsigned char sfp_adr,
 	}
 
 	return i;
-
 }
 
 int sff_write_str(struct bdx_priv *priv, unsigned char sfp_adr,
@@ -360,19 +315,16 @@ int sff_write_str(struct bdx_priv *priv, unsigned char sfp_adr,
 	if (len & 0xff00)
 		return 0;
 
-	DBG("TLK10232 sff_write_str sfp_adr=%x addr=%x start \n", sfp_adr,
-	    addr);
+	DBG("sfp_addr=%x addr=%x start \n", sfp_adr, addr);
 
 	do {
-		err = i2c_write_byte(priv, /*send_start */ 1, /*send_stop */ 0,
-				     sfp_adr & 0xfe);
+		err = i2c_write_byte(priv, 1, 0, sfp_adr & 0xfe);
 		if (err) {
 			err = 1;
 			break;
 		}
 
-		err = i2c_write_byte(priv, /*send_start */ 0, /*send_stop */ 0,
-				     addr & 0xff);
+		err = i2c_write_byte(priv, 0, 0, addr & 0xff);
 		if (err) {
 			err = 2;
 			break;
@@ -380,8 +332,7 @@ int sff_write_str(struct bdx_priv *priv, unsigned char sfp_adr,
 
 		len--;
 		for (i = 0; i < len; i++) {
-			err = i2c_write_byte(priv, /*send_start */ 0,
-					     /*send_stop */ 0, buf[i]);
+			err = i2c_write_byte(priv, 0, 0, buf[i]);
 			if (err) {
 				err = 4;
 				break;
@@ -391,20 +342,18 @@ int sff_write_str(struct bdx_priv *priv, unsigned char sfp_adr,
 			err = 4;
 			break;
 		}
-		err = i2c_write_byte(priv, /*send_start */ 0, /*send_stop */ 1,
-				     buf[i]);
+		err = i2c_write_byte(priv, 0, 1, buf[i]);
 		i++;
-		DBG("TLK10232 sff_write_str sfp_adr=%x addr=%x end \n", sfp_adr,
-		    addr);
+		DBG("sfp_addr=%x addr=%x end \n", sfp_adr, addr);
 	} while (0);
+
 	if (err) {
-		ERR("TLK10232 sff_write step %u failed\n", err);
+		ERR("step %u failed\n", err);
 		i = 0;
 		i2c_stop_cond(priv);
 	}
 
 	return i;
-
 }
 
 void set_GPIO(struct bdx_priv *priv)
@@ -413,7 +362,6 @@ void set_GPIO(struct bdx_priv *priv)
 	    (1 << 11) | (1 << SCL_GPIO) | (1 << SDA_GPIO) | (1 << MOD_ABS_GPIO);
 	WRITE_GPOI_REG(priv, 4, 0);
 	WRITE_GPOI_REG(priv, 6, input_msk);
-
 }
 
 int read_sfp_id(struct bdx_priv *priv)
@@ -430,10 +378,10 @@ int read_sfp_id(struct bdx_priv *priv)
 	if (i)
 		return SFP_ABS;
 	ret = sff_read_str(priv, sff_addr, addr, len, buff);
+#if 1
 	DBG("sff_read_str(0x%x,0x%x,0x%x)=%x  \n", sff_addr, addr, len, ret);
-#if 0
 	for (i = 0; i < ret; i++) {
-		ERR("sff_read_str buf[%u]=0x%x \n", i, buff[i] & 0xff);
+		DBG("buf[%u]=0x%x \n", i, buff[i] & 0xff);
 	}
 #endif
 	if (buff[5] & 0xF)
@@ -444,12 +392,7 @@ int read_sfp_id(struct bdx_priv *priv)
 		return SFP_1G;
 
 	return SFP_10G;
-
 }
-
-#else
-#define read_sfp_id(p) (SFP_10G)
-#endif
 
 int TLK10232_phy_config(struct bdx_priv *priv)
 {
@@ -499,6 +442,33 @@ int TLK10232_phy_config(struct bdx_priv *priv)
 	return 0;
 }
 
+u32 TLK10232_get_link_speed(struct bdx_priv * priv)
+{
+	u32 sfp_mod_type, speed;
+
+	sfp_mod_type = read_sfp_id(priv);
+
+	if (priv->sfp_mod_type != sfp_mod_type) {
+		priv->sfp_mod_type = sfp_mod_type;
+		TLK10232_phy_config(priv);
+	}
+
+	switch (sfp_mod_type) {
+	case SFP_10G:
+	case SFP_10G_DA:
+		speed = SPEED_10000;
+		break;
+	case SFP_1G:
+		/*speed=SPEED_1000; break; */
+	default:
+		speed = 0;
+		break;
+	}
+
+	DBG("speed: %d\n", speed);
+	return speed;
+}
+
 int TLK10232_mdio_reset(struct bdx_priv *priv, int port, unsigned short phy)
 {
 	int regVal;
@@ -517,33 +487,6 @@ int TLK10232_mdio_reset(struct bdx_priv *priv, int port, unsigned short phy)
 	bdx_speed_set(priv, priv->link_speed);
 
 	return 0;
-
-}
-
-u32 TLK10232_get_link_speed(struct bdx_priv * priv)
-{
-	u32 sfp_mod_type, speed;
-
-	sfp_mod_type = read_sfp_id(priv);
-
-	if (priv->sfp_mod_type != sfp_mod_type) {
-		priv->sfp_mod_type = sfp_mod_type;
-		TLK10232_phy_config(priv);
-	}
-	switch (sfp_mod_type) {
-	case SFP_10G:
-	case SFP_10G_DA:
-		speed = SPEED_10000;
-		break;
-	case SFP_1G:
-		/*speed=SPEED_1000; break; */
-	default:
-		speed = 0;
-		break;
-	}
-
-	return speed;
-
 }
 
 u32 TLK10232_link_changed(struct bdx_priv * priv)
@@ -552,6 +495,7 @@ u32 TLK10232_link_changed(struct bdx_priv * priv)
 
 	priv->link_speed = TLK10232_get_link_speed(priv);
 	link = READ_REG(priv, regMAC_LNK_STAT) & MAC_LINK_STAT;
+	DBG("link state reg: 0x%x\n", READ_REG(priv, regMAC_LNK_STAT));
 	if (link) {
 		link = priv->link_speed;
 		DBG("TLK10232 link speed is %s\n",
@@ -559,7 +503,7 @@ u32 TLK10232_link_changed(struct bdx_priv * priv)
 		WRITE_REG(priv, 0x5150, 0);	/*  stop timer */
 	} else {
 		if (priv->link_loop_cnt++ > LINK_LOOP_MAX) {
-			DBG("QT2025 trying to recover link after %d tries\n",
+			DBG("TLK10232 trying to recover link after %d tries\n",
 			    LINK_LOOP_MAX);
 			/* MAC reset */
 			bdx_speed_set(priv, 0);
@@ -567,12 +511,10 @@ u32 TLK10232_link_changed(struct bdx_priv * priv)
 			priv->link_loop_cnt = 0;
 			priv->sfp_mod_type = SFP_ABS;
 		}
-
 		WRITE_REG(priv, 0x5150, 1000000);	/* 1/5 sec timeout */
 	}
 
 	return link;
-
 }
 
 void TLK10232_leds(struct bdx_priv *priv, enum PHY_LEDS_OP op)
@@ -595,13 +537,12 @@ void TLK10232_leds(struct bdx_priv *priv, enum PHY_LEDS_OP op)
 	default:
 		DBG("TLK10232_leds() unknown op 0x%x\n", op);
 		break;
-
 	}
-
 }
 
 __init enum PHY_TYPE TLK10232_register(struct bdx_priv *priv)
 {
+	DBG("init\n");
 	priv->isr_mask =
 	    IR_RX_FREE_0 | IR_LNKCHG0 | IR_PSE | IR_TMR0 | IR_RX_DESC_0 |
 	    IR_TX_FREE_0;
@@ -612,5 +553,4 @@ __init enum PHY_TYPE TLK10232_register(struct bdx_priv *priv)
 	TLK10232_register_settings(priv);
 
 	return PHY_TYPE_TLK10232;
-
 }
