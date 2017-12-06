@@ -670,7 +670,7 @@ static void bdx_fifo_free(struct bdx_priv *priv, struct fifo *f)
 				    f->memsz + FIFO_EXTRA_SPACE, f->va, f->da);
 		f->va = NULL;
 	}
-	return;
+
 }
 
 int bdx_speed_set(struct bdx_priv *priv, u32 speed)
@@ -1193,7 +1193,7 @@ static void bdx_restore_mac(struct net_device *ndev, struct bdx_priv *priv)
 	DBG("mac0 =%x mac1 =%x mac2 =%x\n",
 	    READ_REG(priv, regUNC_MAC0_A),
 	    READ_REG(priv, regUNC_MAC1_A), READ_REG(priv, regUNC_MAC2_A));
-	return;
+
 }
 
 static void bdx_CX4_hw_start(struct bdx_priv *priv)
@@ -1329,8 +1329,6 @@ static void bdx_hw_stop(struct bdx_priv *priv)
 		netif_carrier_off(priv->ndev);
 		netif_stop_queue(priv->ndev);
 	}
-
-	return;
 
 }
 
@@ -1770,7 +1768,7 @@ static void __bdx_vlan_rx_vid(struct net_device *ndev, uint16_t vid, int enable)
 		val &= ~bit;
 	DBG("new val %x\n", val);
 	WRITE_REG(priv, reg, val);
-	return;
+
 }
 
 /*
@@ -1837,7 +1835,7 @@ bdx_vlan_rx_register(struct net_device *ndev, struct vlan_group *grp)
 
 	DBG("device ='%s', group ='%p'\n", ndev->name, grp);
 	priv->vlgrp = grp;
-	return;
+
 }
 #endif
 
@@ -1936,7 +1934,6 @@ static void bdx_setmulti(struct net_device *ndev)
 	/* Enable RX */
 	/* FIXME: RXE(ON) */
 
-	return;
 }
 
 static int bdx_set_mac(struct net_device *ndev, void *p)
@@ -2202,7 +2199,6 @@ static void bdx_rx_free(struct bdx_priv *priv)
 	bdx_fifo_free(priv, &priv->rxf_fifo0.m);
 	bdx_fifo_free(priv, &priv->rxd_fifo0.m);
 
-	return;
 }
 
 /*************************************************************************
@@ -2353,8 +2349,6 @@ static void bdx_rx_alloc_buffers(struct bdx_priv *priv, struct rxdb *db,
 	    READ_REG(priv, f->m.reg_WPTR));
 	dbg_printFifo(&priv->rxf_fifo0.m, (char *)"RXF");
 
-	return;
-
 }
 
 static void bdx_recycle_skb(struct bdx_priv *priv, struct rxd_desc *rxdd)
@@ -2386,7 +2380,7 @@ static void bdx_recycle_skb(struct bdx_priv *priv, struct rxd_desc *rxdd)
 			DBG("wrapped descriptor\n");
 		}
 	}
-	return;
+
 }
 
 static inline u16 tcpCheckSum(u16 * buf, u16 len, u16 * saddr, u16 * daddr,
@@ -3447,7 +3441,7 @@ static void bdx_tx_free_skbs(struct bdx_priv *priv)
 			dev_kfree_skb(db->rptr->addr.skb);
 		bdx_tx_db_inc_rptr(db);
 	}
-	return;
+
 }
 
 /* bdx_tx_free - Free all Tx resources */
@@ -3536,7 +3530,7 @@ static void bdx_tx_push_desc_safe(struct bdx_priv *priv, void *data, int size)
 		size -= avail;
 		data += avail;
 	}
-	return;
+
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 31)
@@ -4545,8 +4539,6 @@ static void __exit bdx_remove(struct pci_dev *pdev)
 #endif
 	MSG("Device removed\n");
 
-	return;
-
 }
 
 #ifdef _DRIVER_RESUME_
@@ -4745,7 +4737,7 @@ static void __exit bdx_module_exit(void)
 
 	pci_unregister_driver(&bdx_pci_driver);
 	MSG("Driver unloaded\n");
-	return;
+
 }
 
 module_exit(bdx_module_exit);
