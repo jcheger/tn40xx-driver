@@ -24,14 +24,14 @@ u32 CX4_link_changed(struct bdx_priv * priv)
 	link = READ_REG(priv, regMAC_LNK_STAT) & MAC_LINK_STAT;
 	if (link) {
 		link = SPEED_10000;
-		DBG("CX4 link speed is 10G\n");
+		netdev_dbg(priv->ndev, "CX4 link speed is 10G\n");
 	} else {
 		if (priv->link_loop_cnt++ > LINK_LOOP_MAX) {
-			DBG("CX4 MAC reset\n");
+			netdev_dbg(priv->ndev, "CX4 MAC reset\n");
 			priv->link_speed = 0;
 			priv->link_loop_cnt = 0;
 		}
-		DBG("CX4 no link, setting 1/5 sec timer\n");
+		netdev_dbg(priv->ndev, "CX4 no link, setting 1/5 sec timer\n");
 		WRITE_REG(priv, 0x5150, 1000000);	/* 1/5 sec timeout */
 	}
 
@@ -55,7 +55,7 @@ void CX4_leds(struct bdx_priv *priv, enum PHY_LEDS_OP op)
 		break;
 
 	default:
-		DBG("CX4_leds() unknown op 0x%x\n", op);
+		netdev_dbg(priv->ndev, "CX4_leds() unknown op 0x%x\n", op);
 		break;
 
 	}

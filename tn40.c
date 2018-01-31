@@ -143,14 +143,14 @@ static int bdx_init_rss(struct bdx_priv *priv)
 	for (i = 0; i < 4 * RSS_HASH_LEN; i += 4) {
 		u32 rnd = prandom_u32();
 		WRITE_REG(priv, regRSS_HASH_BASE + 4 * i, rnd);
-		DBG("bdx_init_rss() rnd 0x%x\n", rnd);
+		netdev_dbg(priv->ndev, "bdx_init_rss() rnd 0x%x\n", rnd);
 	}
 	WRITE_REG(priv, regRSS_CNG,
 		  RSS_ENABLED | RSS_HFT_TOEPLITZ |
 		  RSS_HASH_IPV4 | RSS_HASH_TCP_IPV4 |
 		  RSS_HASH_IPV6 | RSS_HASH_TCP_IPV6);
 
-	DBG("regRSS_CNG =%x\n", READ_REG(priv, regRSS_CNG));
+	netdev_dbg(priv->ndev, "regRSS_CNG =%x\n", READ_REG(priv, regRSS_CNG));
 	return 0;
 }
 #else
@@ -199,39 +199,36 @@ static void dbg_irqActions(struct pci_dev *pdev)
 }
 #endif
 
-void dbg_printFifo(struct fifo *m, char *fName)
+void dbg_printFifo(struct bdx_priv *priv, struct fifo *m, char *fName)
 {
-	DBG("%s fifo:\n", fName);
-	DBG("WPTR 0x%x = 0x%x RPTR 0x%x = 0x%x\n",
-	    m->reg_WPTR, m->wptr, m->reg_RPTR, m->rptr);
+	netdev_dbg(priv->ndev, "%s fifo:\n", fName);
+	netdev_dbg(priv->ndev, "WPTR 0x%x = 0x%x RPTR 0x%x = 0x%x\n",
+		   m->reg_WPTR, m->wptr, m->reg_RPTR, m->rptr);
 
 }
 
 void dbg_printRegs(struct bdx_priv *priv, char *msg)
 {
-
-	DBG("* %s * \n", msg);
-	DBG("~~~~~~~~~~~~~\n");
-	DBG("veneto:");
-	DBG("pc = 0x%x li = 0x%x ic = %d\n", READ_REG(priv, 0x2300),
-	    READ_REG(priv, 0x2310), READ_REG(priv, 0x2320));
-	dbg_printFifo(&priv->txd_fifo0.m, (char *)"TXD");
-	dbg_printFifo(&priv->rxf_fifo0.m, (char *)"RXF");
-	dbg_printFifo(&priv->rxd_fifo0.m, (char *)"RXD");
-	DBG("~~~~~~~~~~~~~\n");
-
+	netdev_dbg(priv->ndev, "* %s * \n", msg);
+	netdev_dbg(priv->ndev, "pc = 0x%x li = 0x%x ic = %d\n",
+		   READ_REG(priv, 0x2300),
+		   READ_REG(priv, 0x2310), READ_REG(priv, 0x2320));
+	dbg_printFifo(priv, &priv->txd_fifo0.m, (char *)"TXD");
+	dbg_printFifo(priv, &priv->rxf_fifo0.m, (char *)"RXF");
+	dbg_printFifo(priv, &priv->rxd_fifo0.m, (char *)"RXD");
+	netdev_dbg(priv->ndev, "~~~~~~~~~~~~~\n");
 }
 
 void dbg_printPBL(struct pbl *pbl)
 {
-	DBG("pbl: len %u pa_lo 0x%x pa_hi 0x%x\n", pbl->len, pbl->pa_lo,
-	    pbl->pa_hi);
+	printk(KERN_DEBUG "pbl: len %u pa_lo 0x%x pa_hi 0x%x\n", pbl->len,
+	       pbl->pa_lo, pbl->pa_hi);
 }
 
 #else
 #define dbg_printRegs(priv, msg)
 #define dbg_printPBL(pbl)
-#define dbg_printFifo(m, fName)
+#define dbg_printFifo(priv, m, fName)
 #endif
 
 #ifdef TN40_THUNDERBOLT
@@ -331,7 +328,7 @@ int bdx_mdio_read(struct bdx_priv *priv, int device, int port, u16 addr)
 		return -1;
 	}
 	if (GET_MDIO_RD_ERR(tmp_reg)) {
-		DBG("MDIO error after read command\n");
+		netdev_err(priv->ndev, "MDIO error after read command\n");
 		return -1;
 	}
 	tmp_reg = readl(regs + regMDIO_DATA);
@@ -406,7 +403,7 @@ int bdx_mdio_look_for_phy(struct bdx_priv *priv, int port)
 	phy_id &= 0xFFFF;
 	for (i = 0; i < 32; i++) {
 		msleep(10);
-		DBG("LOOK FOR PHY: port=0x%x\n", i);
+		netdev_dbg(priv->ndev, "LOOK FOR PHY: port=0x%x\n", i);
 		phy_id = bdx_mdio_read(priv, 1, i, 0x0002);	/* PHY_ID_HIGH */
 		phy_id &= 0xFFFF;
 		if (phy_id != 0xFFFF && phy_id != 0) {
@@ -599,7 +596,7 @@ int bdx_speed_set(struct bdx_priv *priv, u32 speed)
 	int i;
 	u32 val;
 
-	DBG("speed %d\n", speed);
+	netdev_dbg(priv->ndev, "speed %d\n", speed);
 
 	switch (speed) {
 	case SPEED_10000:
@@ -607,7 +604,7 @@ int bdx_speed_set(struct bdx_priv *priv, u32 speed)
 	case SPEED_2500:
 	case SPEED_1000X:
 	case SPEED_100X:
-		DBG("link_speed %d\n", speed);
+		netdev_dbg(priv->ndev, "link_speed %d\n", speed);
 		WRITE_REG(priv, 0x1010, 0x217);	/* ETHSD.REFCLK_CONF  */
 		WRITE_REG(priv, 0x104c, 0x4c);	/* ETHSD.L0_RX_PCNT  */
 		WRITE_REG(priv, 0x1050, 0x4c);	/* ETHSD.L1_RX_PCNT  */
@@ -725,13 +722,14 @@ int bdx_speed_set(struct bdx_priv *priv, u32 speed)
 void bdx_speed_changed(struct bdx_priv *priv, u32 speed)
 {
 
-	DBG("speed %d\n", speed);
+	netdev_dbg(priv->ndev, "speed %d\n", speed);
 	speed = bdx_speed_set(priv, speed);
-	DBG("link_speed %d speed %d\n", priv->link_speed, speed);
+	netdev_dbg(priv->ndev, "link_speed %d speed %d\n", priv->link_speed,
+		   speed);
 	if (priv->link_speed != speed) {
 		priv->link_speed = speed;
-		DBG("%s Speed changed %d\n", priv->ndev->name,
-		    priv->link_speed);
+		netdev_dbg(priv->ndev, "%s Speed changed %d\n",
+			   priv->ndev->name, priv->link_speed);
 	}
 
 }
@@ -780,7 +778,7 @@ static void bdx_link_changed(struct bdx_priv *priv)
 static inline void bdx_isr_extra(struct bdx_priv *priv, u32 isr)
 {
 	if (isr & (IR_LNKCHG0 | IR_LNKCHG1 | IR_TMR0)) {
-		DBG("isr = 0x%x\n", isr);
+		netdev_dbg(priv->ndev, "isr = 0x%x\n", isr);
 		bdx_link_changed(priv);
 	}
 }
@@ -807,7 +805,7 @@ static irqreturn_t bdx_isr_napi(int irq, void *dev)
 	u32 isr;
 
 	isr = READ_REG(priv, regISR_MSK0);
-	DBG("isr = 0x%x\n", isr);
+	netdev_dbg(ndev, "isr = 0x%x\n", isr);
 
 	if (unlikely(!isr)) {
 		bdx_enable_interrupts(priv);
@@ -878,7 +876,7 @@ static int __init bdx_fw_load(struct bdx_priv *priv)
 
 	master = READ_REG(priv, regINIT_SEMAPHORE);
 	if (!READ_REG(priv, regINIT_STATUS) && master) {
-		DBG("Loading FW...\n");
+		netdev_dbg(priv->ndev, "Loading FW...\n");
 		bdx_tx_push_desc_safe(priv, s_firmLoad, sizeof(s_firmLoad));
 		mdelay(100);
 	}
@@ -893,12 +891,14 @@ static int __init bdx_fw_load(struct bdx_priv *priv)
 	if (i == 200) {
 		netdev_err(priv->ndev, "%s firmware loading failed\n",
 			   priv->ndev->name);
-		DBG("VPC = 0x%x VIC = 0x%x INIT_STATUS = 0x%x i =%d\n",
-		    READ_REG(priv, regVPC),
-		    READ_REG(priv, regVIC), READ_REG(priv, regINIT_STATUS), i);
+		netdev_dbg(priv->ndev,
+			   "VPC = 0x%x VIC = 0x%x INIT_STATUS = 0x%x i =%d\n",
+			   READ_REG(priv, regVPC), READ_REG(priv, regVIC),
+			   READ_REG(priv, regINIT_STATUS), i);
 		rVal = -EIO;
 	} else {
-		DBG("%s firmware loading success\n", priv->ndev->name);
+		netdev_dbg(priv->ndev, "%s firmware loading success\n",
+			   priv->ndev->name);
 	}
 	print_fw_id(priv->nic);
 	return rVal;
@@ -909,9 +909,10 @@ static void bdx_restore_mac(struct net_device *ndev, struct bdx_priv *priv)
 {
 	u32 val;
 
-	DBG("mac0 =%x mac1 =%x mac2 =%x\n",
-	    READ_REG(priv, regUNC_MAC0_A),
-	    READ_REG(priv, regUNC_MAC1_A), READ_REG(priv, regUNC_MAC2_A));
+	netdev_dbg(ndev, "mac0 =%x mac1 =%x mac2 =%x\n",
+		   READ_REG(priv, regUNC_MAC0_A),
+		   READ_REG(priv, regUNC_MAC1_A), READ_REG(priv,
+							   regUNC_MAC2_A));
 
 	val = (ndev->dev_addr[0] << 8) | (ndev->dev_addr[1]);
 	WRITE_REG(priv, regUNC_MAC2_A, val);
@@ -928,9 +929,10 @@ static void bdx_restore_mac(struct net_device *ndev, struct bdx_priv *priv)
 	WRITE_REG(priv, regMAC_ADDR_1,
 		  (ndev->dev_addr[5] << 8) | (ndev->dev_addr[4]));
 
-	DBG("mac0 =%x mac1 =%x mac2 =%x\n",
-	    READ_REG(priv, regUNC_MAC0_A),
-	    READ_REG(priv, regUNC_MAC1_A), READ_REG(priv, regUNC_MAC2_A));
+	netdev_dbg(ndev, "mac0 =%x mac1 =%x mac2 =%x\n",
+		   READ_REG(priv, regUNC_MAC0_A),
+		   READ_REG(priv, regUNC_MAC1_A), READ_REG(priv,
+							   regUNC_MAC2_A));
 }
 
 static void bdx_CX4_hw_start(struct bdx_priv *priv)
@@ -990,12 +992,13 @@ static void bdx_CX4_hw_start(struct bdx_priv *priv)
  */
 static int bdx_hw_start(struct bdx_priv *priv)
 {
-	DBG("********** bdx_hw_start() ************\n");
+	netdev_dbg(priv->ndev, "********** bdx_hw_start() ************\n");
 	priv->link_speed = 0;	/* -1 */
 	if (priv->phy_type == PHY_TYPE_CX4) {
 		bdx_CX4_hw_start(priv);
 	} else {
-		DBG("********** bdx_hw_start() NOT CX4 ************\n");
+		netdev_dbg(priv->ndev,
+			   "********** bdx_hw_start() NOT CX4 ************\n");
 		WRITE_REG(priv, regFRM_LENGTH, 0X3FE0);
 		WRITE_REG(priv, regGMAC_RXF_A, 0X10fd);
 		/*MikeFix1 */
@@ -1013,11 +1016,11 @@ static int bdx_hw_start(struct bdx_priv *priv)
 	WRITE_REG(priv, regMAX_FRAME_A,
 		  priv->rxf_fifo0.m.pktsz & MAX_FRAME_AB_VAL);
 
-	DBG("RDINTCM =%08x\n", priv->rdintcm);	/*NOTE: test script uses this */
+	netdev_dbg(priv->ndev, "RDINTCM =%08x\n", priv->rdintcm);	/*NOTE: test script uses this */
 	WRITE_REG(priv, regRDINTCM0, priv->rdintcm);
 	WRITE_REG(priv, regRDINTCM2, 0);
 
-	DBG("TDINTCM =%08x\n", priv->tdintcm);	/*NOTE: test script uses this */
+	netdev_dbg(priv->ndev, "TDINTCM =%08x\n", priv->tdintcm);	/*NOTE: test script uses this */
 	WRITE_REG(priv, regTDINTCM0, priv->tdintcm);	/* old val = 0x300064 */
 
 	/* Enable timer interrupt once in 2 secs. */
@@ -1288,7 +1291,7 @@ static int bdx_ioctl_priv(struct net_device *ndev, struct ifreq *ifr, int cmd)
 	int error;
 	u16 dev, addr;
 
-	DBG("jiffies =%ld cmd =%d\n", jiffies, cmd);
+	netdev_dbg(ndev, "jiffies =%ld cmd =%d\n", jiffies, cmd);
 	if (cmd != SIOCDEVPRIVATE) {
 		error =
 		    copy_from_user(&tn40_ioctl, ifr->ifr_data,
@@ -1297,8 +1300,9 @@ static int bdx_ioctl_priv(struct net_device *ndev, struct ifreq *ifr, int cmd)
 			netdev_err(priv->ndev, "cant copy from user\n");
 			return error;
 		}
-		DBG("%d 0x%x 0x%x 0x%p\n", tn40_ioctl.data[0],
-		    tn40_ioctl.data[1], tn40_ioctl.data[2], tn40_ioctl.buf);
+		netdev_dbg(priv->ndev, "%d 0x%x 0x%x 0x%p\n",
+			   tn40_ioctl.data[0], tn40_ioctl.data[1],
+			   tn40_ioctl.data[2], tn40_ioctl.buf);
 	}
 	if (!capable(CAP_SYS_RAWIO))
 		return -EPERM;
@@ -1328,8 +1332,9 @@ static int bdx_ioctl_priv(struct net_device *ndev, struct ifreq *ifr, int cmd)
 		if (error < 0)
 			return error;
 		tn40_ioctl.data[2] = READ_REG(priv, tn40_ioctl.data[1]);
-		DBG("read_reg(0x%x)=0x%x (dec %d)\n", tn40_ioctl.data[1],
-		    tn40_ioctl.data[2], tn40_ioctl.data[2]);
+		netdev_dbg(ndev, "read_reg(0x%x)=0x%x (dec %d)\n",
+			   tn40_ioctl.data[1], tn40_ioctl.data[2],
+			   tn40_ioctl.data[2]);
 		error =
 		    copy_to_user(ifr->ifr_data, &tn40_ioctl,
 				 sizeof(tn40_ioctl));
@@ -1388,10 +1393,13 @@ static int bdx_ioctl_priv(struct net_device *ndev, struct ifreq *ifr, int cmd)
 				bytes =
 				    copy_to_user(tn40_ioctl.buf, buf,
 						 tn40_ioctl.data[2]);
-				DBG("copy_to_user %p %u return %lu\n",
-				    tn40_ioctl.buf, tn40_ioctl.data[2], bytes);
+				netdev_dbg(ndev,
+					   "copy_to_user %p %u return %lu\n",
+					   tn40_ioctl.buf, tn40_ioctl.data[2],
+					   bytes);
 			} else {
-				DBG("=================== EOF =================\n");
+				netdev_dbg(ndev,
+					   "=================== EOF =================\n");
 				error = -EIO;
 			}
 			return error;
@@ -1444,7 +1452,7 @@ static void __bdx_vlan_rx_vid(struct net_device *ndev, uint16_t vid, int enable)
 	struct bdx_priv *priv = netdev_priv(ndev);
 	u32 reg, bit, val;
 
-	DBG("vid =%d value =%d\n", (int)vid, enable);
+	netdev_dbg(ndev, "vid =%d value =%d\n", (int)vid, enable);
 	if (unlikely(vid >= 4096)) {
 		netdev_err(ndev, "invalid VID: %u (> 4096)\n", vid);
 		return;
@@ -1452,12 +1460,12 @@ static void __bdx_vlan_rx_vid(struct net_device *ndev, uint16_t vid, int enable)
 	reg = regVLAN_0 + (vid / 32) * 4;
 	bit = 1 << vid % 32;
 	val = READ_REG(priv, reg);
-	DBG("reg =%x, val =%x, bit =%d\n", reg, val, bit);
+	netdev_dbg(ndev, "reg =%x, val =%x, bit =%d\n", reg, val, bit);
 	if (enable)
 		val |= bit;
 	else
 		val &= ~bit;
-	DBG("new val %x\n", val);
+	netdev_dbg(ndev, "new val %x\n", val);
 	WRITE_REG(priv, reg, val);
 }
 
@@ -1810,8 +1818,8 @@ static void bdx_rx_free_buffers(struct bdx_priv *priv, struct rxdb *db,
 	struct rx_map *dm;
 	u16 i;
 
-	DBG("total =%d free =%d busy =%d\n", db->nelem, bdx_rxdb_available(db),
-	    db->nelem - bdx_rxdb_available(db));
+	netdev_dbg(priv->ndev, "total =%d free =%d busy =%d\n", db->nelem,
+		   bdx_rxdb_available(db), db->nelem - bdx_rxdb_available(db));
 	while (bdx_rxdb_available(db) > 0) {
 		i = bdx_rxdb_alloc_elem(db);
 		dm = bdx_rxdb_addr_elem(db, i);
@@ -1925,8 +1933,8 @@ static void bdx_rx_alloc_buffers(struct bdx_priv *priv, struct rxdb *db,
 				       ((page =
 					 alloc_pages(gfp_mask,
 						     page_order)) == NULL)) {
-					DBG("order %d -> %d", page_order,
-					    page_order - 1);
+					netdev_dbg(priv->ndev, "order %d -> %d",
+						   page_order, page_order - 1);
 					page_order =
 					    bdx_get_order(page_order - 1,
 							  buf_order);
@@ -1988,20 +1996,20 @@ static void bdx_rx_alloc_buffers(struct bdx_priv *priv, struct rxdb *db,
 			f->m.wptr = delta;
 			if (delta > 0) {
 				memcpy(f->m.va, f->m.va + f->m.memsz, delta);
-				DBG("Wrapped descriptor\n");
+				netdev_dbg(priv->ndev, "Wrapped descriptor\n");
 			}
 		}
 		dno--;
 	}
 	/*TBD: to do - delayed rxf wptr like in txd */
 	WRITE_REG(priv, f->m.reg_WPTR, f->m.wptr & TXF_WPTR_WR_PTR);
-	DBG("WRITE_REG 0x%04x f->m.reg_WPTR 0x%x\n", f->m.reg_WPTR,
-	    f->m.wptr & TXF_WPTR_WR_PTR);
-	DBG("READ_REG  0x%04x f->m.reg_RPTR=0x%x\n", f->m.reg_RPTR,
-	    READ_REG(priv, f->m.reg_RPTR));
-	DBG("READ_REG  0x%04x f->m.reg_WPTR=0x%x\n", f->m.reg_WPTR,
-	    READ_REG(priv, f->m.reg_WPTR));
-	dbg_printFifo(&priv->rxf_fifo0.m, (char *)"RXF");
+	netdev_dbg(priv->ndev, "WRITE_REG 0x%04x f->m.reg_WPTR 0x%x\n",
+		   f->m.reg_WPTR, f->m.wptr & TXF_WPTR_WR_PTR);
+	netdev_dbg(priv->ndev, "READ_REG  0x%04x f->m.reg_RPTR=0x%x\n",
+		   f->m.reg_RPTR, READ_REG(priv, f->m.reg_RPTR));
+	netdev_dbg(priv->ndev, "READ_REG  0x%04x f->m.reg_WPTR=0x%x\n",
+		   f->m.reg_WPTR, READ_REG(priv, f->m.reg_WPTR));
+	dbg_printFifo(priv, &priv->rxf_fifo0.m, (char *)"RXF");
 }
 
 static void bdx_recycle_skb(struct bdx_priv *priv, struct rxd_desc *rxdd)
@@ -2030,7 +2038,7 @@ static void bdx_recycle_skb(struct bdx_priv *priv, struct rxd_desc *rxdd)
 		f->m.wptr = delta;
 		if (delta > 0) {
 			memcpy(f->m.va, f->m.va + f->m.memsz, delta);
-			DBG("wrapped descriptor\n");
+			netdev_dbg(priv->ndev, "wrapped descriptor\n");
 		}
 	}
 }
@@ -2078,7 +2086,7 @@ static void bdx_skb_add_rx_frag(struct sk_buff *skb, int i, struct page *page,
 
 #define PKT_ERR_LEN		(70)
 
-static int bdx_rx_error(char *pkt, u32 rxd_err, u16 len)
+static int bdx_rx_error(struct bdx_priv *priv, char *pkt, u32 rxd_err, u16 len)
 {
 	struct ethhdr *eth = (struct ethhdr *)pkt;
 	struct iphdr *iph =
@@ -2091,7 +2099,8 @@ static int bdx_rx_error(char *pkt, u32 rxd_err, u16 len)
 		struct udphdr *udp =
 		    (struct udphdr *)((u8 *) iph + sizeof(struct iphdr));
 		if (udp->check == 0) {
-			DBG("false rxd_err = 0x%x\n", rxd_err);
+			netdev_dbg(priv->ndev, "false rxd_err = 0x%x\n",
+				   rxd_err);
 			rVal = 0;	/* Work around H/W false error indication */
 		} else if (len < PKT_ERR_LEN) {
 			u16 udpSum;
@@ -2102,7 +2111,8 @@ static int bdx_rx_error(char *pkt, u32 rxd_err, u16 len)
 					(u16 *) & iph->saddr,
 					(u16 *) & iph->daddr, IPPROTO_UDP);
 			if (udpSum == 0xFFFF) {
-				DBG("false rxd_err = 0x%x\n", rxd_err);
+				netdev_dbg(priv->ndev, "false rxd_err = 0x%x\n",
+					   rxd_err);
 				rVal = 0;	/* Work around H/W false error indication */
 			}
 		}
@@ -2116,7 +2126,8 @@ static int bdx_rx_error(char *pkt, u32 rxd_err, u16 len)
 				(u16 *) & iph->saddr, (u16 *) & iph->daddr,
 				IPPROTO_TCP);
 		if (tcpSum == 0xFFFF) {
-			DBG("false rxd_err = 0x%x\n", rxd_err);
+			netdev_dbg(priv->ndev, "false rxd_err = 0x%x\n",
+				   rxd_err);
 			rVal = 0;	/* Work around H/W false error indication */
 		}
 	}
@@ -2204,7 +2215,9 @@ static int bdx_rx_receive(struct bdx_priv *priv, struct rxd_fifo *f, int budget)
 
 		if (size < 0) {
 			END_TIMER(bdx_rx_receive_1);
-			DBG("bdx_rx_receive() PARTIALLY ARRIVED DESCRIPTOR tmp_len %d\n", tmp_len);
+			netdev_dbg(priv->ndev,
+				   "bdx_rx_receive() PARTIALLY ARRIVED DESCRIPTOR tmp_len %d\n",
+				   tmp_len);
 			break;
 		}
 
@@ -2220,8 +2233,9 @@ static int bdx_rx_receive(struct bdx_priv *priv, struct rxd_fifo *f, int budget)
 				/* COPY PARTIAL DESCRIPTOR TO THE END OF
 				   THE QUEUE */
 
-				DBG("wrapped desc rptr=%d tmp_len=%d\n",
-				    f->m.rptr, tmp_len);
+				netdev_dbg(priv->ndev,
+					   "wrapped desc rptr=%d tmp_len=%d\n",
+					   f->m.rptr, tmp_len);
 				memcpy(f->m.va + f->m.memsz, f->m.va, tmp_len);
 			}
 		}
@@ -2248,7 +2262,7 @@ static int bdx_rx_receive(struct bdx_priv *priv, struct rxd_fifo *f, int budget)
 				pkt = db->pkt;
 				skb_copy_from_linear_data(dm->skb, pkt, len);
 #endif
-				bErr = bdx_rx_error(pkt, rxd_err, len);
+				bErr = bdx_rx_error(priv, pkt, rxd_err, len);
 			}
 			if (bErr) {
 				WRN("rxd_err = 0x%x\n", rxd_err);
@@ -2257,7 +2271,7 @@ static int bdx_rx_receive(struct bdx_priv *priv, struct rxd_fifo *f, int budget)
 				continue;
 			}
 		}
-		DBG("tn40xx: * RX %d *\n", len);
+		netdev_dbg(priv->ndev, "tn40xx: * RX %d *\n", len);
 		rxf_fifo = &priv->rxf_fifo0;
 
 		/* ARE WE USING SKBS OR PAGE DESCRIPTORS? */
@@ -2293,7 +2307,7 @@ static int bdx_rx_receive(struct bdx_priv *priv, struct rxd_fifo *f, int budget)
 #if !defined(RHEL_RELEASE_CODE)
 			skb->l4_hash = 1;
 #endif
-			DBG("rxhash    = 0x%x\n", skb->hash);
+			netdev_dbg(priv->ndev, "rxhash    = 0x%x\n", skb->hash);
 #endif
 
 			bdx_skb_add_rx_frag(skb, 0, dm->page, dm->off, len);
@@ -2413,15 +2427,15 @@ static int bdx_rx_receive(struct bdx_priv *priv, struct rxd_fifo *f, int budget)
 static void print_rxdd(struct rxd_desc *rxdd, u32 rxd_val1, u16 len,
 		       u16 rxd_vlan)
 {
-	DBG("rxdd bc %d rxfq %d to %d type %d err %d rxp %d "
-	    "pkt_id %d vtag %d len %d vlan_id %d cfi %d prio %d "
-	    "va_lo %d va_hi %d\n",
-	    GET_RXD_BC(rxd_val1), GET_RXD_RXFQ(rxd_val1), GET_RXD_TO(rxd_val1),
-	    GET_RXD_TYPE(rxd_val1), GET_RXD_ERR(rxd_val1),
-	    GET_RXD_RXP(rxd_val1), GET_RXD_PKT_ID(rxd_val1),
-	    GET_RXD_VTAG(rxd_val1), len, GET_RXD_VLAN_ID(rxd_vlan),
-	    GET_RXD_CFI(rxd_vlan), GET_RXD_PRIO(rxd_vlan), rxdd->va_lo,
-	    rxdd->va_hi);
+	printk(KERN_DEBUG "rxdd bc %d rxfq %d to %d type %d err %d rxp %d "
+	       "pkt_id %d vtag %d len %d vlan_id %d cfi %d prio %d "
+	       "va_lo %d va_hi %d\n",
+	       GET_RXD_BC(rxd_val1), GET_RXD_RXFQ(rxd_val1),
+	       GET_RXD_TO(rxd_val1), GET_RXD_TYPE(rxd_val1),
+	       GET_RXD_ERR(rxd_val1), GET_RXD_RXP(rxd_val1),
+	       GET_RXD_PKT_ID(rxd_val1), GET_RXD_VTAG(rxd_val1), len,
+	       GET_RXD_VLAN_ID(rxd_vlan), GET_RXD_CFI(rxd_vlan),
+	       GET_RXD_PRIO(rxd_vlan), rxdd->va_lo, rxdd->va_hi);
 }
 
 static void print_rxfd(struct rxf_desc *rxfd)
@@ -2622,8 +2636,9 @@ static inline int bdx_tx_map_skb(struct bdx_priv *priv, struct sk_buff *skb,
 	int copyBytes = 0;
 
 	do {
-		DBG("TX skb %p skbLen %d dataLen %d frags %d\n", skb, skb->len,
-		    skb->data_len, nrFrags);
+		netdev_dbg(priv->ndev,
+			   "TX skb %p skbLen %d dataLen %d frags %d\n", skb,
+			   skb->len, skb->data_len, nrFrags);
 		if (nrFrags > MAX_PBL - 1) {
 			netdev_err(priv->ndev, "MAX PBL exceeded %d !!!\n",
 				   nrFrags);
@@ -2690,7 +2705,7 @@ static void __init init_txd_sizes(void)
 			lwords++;	/* pad it with 1 lword */
 		txd_sizes[i].qwords = lwords >> 1;
 		txd_sizes[i].bytes = lwords << 2;
-		DBG("%2d. %d\n", i, txd_sizes[i].bytes);
+		printk(KERN_DEBUG "%2d. %d\n", i, txd_sizes[i].bytes);
 	}
 }
 
@@ -2753,7 +2768,7 @@ static inline int bdx_tx_space(struct bdx_priv *priv)
 
 void bdx_tx_timeout(struct net_device *ndev)
 {
-	DBG("%s: %s: TX timeout\n", BDX_DRV_NAME, ndev->name);
+	netdev_dbg(ndev, "%s: %s: TX timeout\n", BDX_DRV_NAME, ndev->name);
 }
 
 /* bdx_tx_transmit - Send a packet to the NIC.
@@ -2796,8 +2811,9 @@ static int bdx_tx_transmit(struct sk_buff *skb, struct net_device *ndev)
 		local_irq_save(flags);
 		if (!(spinLocked = spin_trylock(&priv->tx_lock))) {
 			local_irq_restore(flags);
-			DBG("%s: %s TX locked, returning NETDEV_TX_LOCKED\n",
-			    BDX_DRV_NAME, ndev->name);
+			netdev_dbg(ndev,
+				   "%s: %s TX locked, returning NETDEV_TX_LOCKED\n",
+				   BDX_DRV_NAME, ndev->name);
 			rVal = NETDEV_TX_LOCKED;
 			break;
 		}
@@ -2817,8 +2833,8 @@ static int bdx_tx_transmit(struct sk_buff *skb, struct net_device *ndev)
 		if (skb_shinfo(skb)->gso_size) {
 			txd_mss = skb_shinfo(skb)->gso_size;
 			txd_lgsnd = 1;
-			DBG("skb %p pkt len %d gso size = %d\n", skb, pkt_len,
-			    txd_mss);
+			netdev_dbg(ndev, "skb %p pkt len %d gso size = %d\n",
+				   skb, pkt_len, txd_mss);
 		}
 		if (vlan_tx_tag_present(skb)) {
 			/* Don't cut VLAN ID to 12 bits */
@@ -2833,11 +2849,13 @@ static int bdx_tx_transmit(struct sk_buff *skb, struct net_device *ndev)
 		    CPU_CHIP_SWAP32(TXD_W1_VAL
 				    (txd_sizes[nr_frags].qwords, txd_checksum,
 				     txd_vtag, txd_lgsnd, txd_vlan_id));
-		DBG("=== w1 qwords[%d] %d =====\n", nr_frags,
-		    txd_sizes[nr_frags].qwords);
-		DBG("=== TxD desc =====================\n");
-		DBG("=== w1: 0x%x ================\n", txdd->txd_val1);
-		DBG("=== w2: mss 0x%x len 0x%x\n", txdd->mss, txdd->length);
+		netdev_dbg(ndev, "=== w1 qwords[%d] %d =====\n", nr_frags,
+			   txd_sizes[nr_frags].qwords);
+		netdev_dbg(ndev, "=== TxD desc =====================\n");
+		netdev_dbg(ndev, "=== w1: 0x%x ================\n",
+			   txdd->txd_val1);
+		netdev_dbg(ndev, "=== w2: mss 0x%x len 0x%x\n", txdd->mss,
+			   txdd->length);
 		/* SHORT_PKT_FIX */
 		if (pkt_len < 60) {
 			struct pbl *pbl = &txdd->pbl[++nr_frags];
@@ -2850,8 +2868,11 @@ static int bdx_tx_transmit(struct sk_buff *skb, struct net_device *ndev)
 			pbl->len = CPU_CHIP_SWAP32(60 - pkt_len);
 			pbl->pa_lo = CPU_CHIP_SWAP32(L32_64(priv->b0_dma));
 			pbl->pa_hi = CPU_CHIP_SWAP32(H32_64(priv->b0_dma));
-			DBG("=== SHORT_PKT_FIX   ================\n");
-			DBG("=== nr_frags : %d   ================\n", nr_frags);
+			netdev_dbg(ndev,
+				   "=== SHORT_PKT_FIX   ================\n");
+			netdev_dbg(ndev,
+				   "=== nr_frags : %d   ================\n",
+				   nr_frags);
 			dbg_printPBL(pbl);
 		}
 		/* SHORT_PKT_FIX end */
@@ -2896,8 +2917,8 @@ static int bdx_tx_transmit(struct sk_buff *skb, struct net_device *ndev)
 		priv->net_stats.tx_packets++;
 		priv->net_stats.tx_bytes += pkt_len;
 		if (priv->tx_level < BDX_MIN_TX_LEVEL) {
-			DBG("%s: %s: TX Q STOP level %d\n", BDX_DRV_NAME,
-			    ndev->name, priv->tx_level);
+			netdev_dbg(ndev, "%s: %s: TX Q STOP level %d\n",
+				   BDX_DRV_NAME, ndev->name, priv->tx_level);
 			netif_stop_queue(ndev);
 		}
 
@@ -2936,8 +2957,9 @@ static void bdx_tx_cleanup(struct bdx_priv *priv)
 		struct txf_desc *txfd =
 		    (struct txf_desc *)(f->m.va + f->m.rptr);
 		if (txfd->va_hi != 0) {
-			DBG("bdx_freeCmem() skb 0x%x len %d\n", txfd->va_lo,
-			    txfd->va_hi);
+			netdev_dbg(priv->ndev,
+				   "bdx_freeCmem() skb 0x%x len %d\n",
+				   txfd->va_lo, txfd->va_hi);
 			bdx_freeCmem(priv, txfd->va_hi);
 		}
 #endif
@@ -2948,8 +2970,8 @@ static void bdx_tx_cleanup(struct bdx_priv *priv)
 		BDX_ASSERT(db->rptr->len == 0);
 		do {
 			BDX_ASSERT(db->rptr->addr.dma == 0);
-			DBG("pci_unmap_page 0x%llx len %d\n",
-			    db->rptr->addr.dma, db->rptr->len);
+			netdev_dbg(priv->ndev, "pci_unmap_page 0x%llx len %d\n",
+				   db->rptr->addr.dma, db->rptr->len);
 			pci_unmap_page(priv->pdev, db->rptr->addr.dma,
 				       db->rptr->len, PCI_DMA_TODEVICE);
 			bdx_tx_db_inc_rptr(db);
@@ -2958,8 +2980,8 @@ static void bdx_tx_cleanup(struct bdx_priv *priv)
 
 		/* Now should come skb pointer - free it */
 		dev_kfree_skb_any(db->rptr->addr.skb);
-		DBG("dev_kfree_skb_any %p %d\n", db->rptr->addr.skb,
-		    -db->rptr->len);
+		netdev_dbg(priv->ndev, "dev_kfree_skb_any %p %d\n",
+			   db->rptr->addr.skb, -db->rptr->len);
 		bdx_tx_db_inc_rptr(db);
 	}
 
@@ -2981,8 +3003,8 @@ static void bdx_tx_cleanup(struct bdx_priv *priv)
 	if (unlikely(netif_queue_stopped(priv->ndev) &&
 		     netif_carrier_ok(priv->ndev) &&
 		     (priv->tx_level >= BDX_MAX_TX_LEVEL / 2))) {
-		DBG("%s: %s: TX Q WAKE level %d\n", BDX_DRV_NAME,
-		    priv->ndev->name, priv->tx_level);
+		netdev_dbg(priv->ndev, "%s: %s: TX Q WAKE level %d\n",
+			   BDX_DRV_NAME, priv->ndev->name, priv->tx_level);
 		netif_wake_queue(priv->ndev);
 	}
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 7,0)
@@ -3083,15 +3105,17 @@ static void bdx_tx_push_desc_safe(struct bdx_priv *priv, void *data, int size)
 		int avail = bdx_tx_space(priv) - 8;
 		if (avail <= 0) {
 			if (timer++ > 300) {	/* Prevent endless loop */
-				DBG("timeout while writing desc to TxD fifo\n");
+				netdev_dbg(priv->ndev,
+					   "timeout while writing desc to TxD fifo\n");
 				break;
 			}
 			udelay(50);	/* Give the HW a chance to clean the fifo */
 			continue;
 		}
 		avail = MIN(avail, size);
-		DBG("about to push  %d bytes starting %p size %d\n", avail,
-		    data, size);
+		netdev_dbg(priv->ndev,
+			   "about to push  %d bytes starting %p size %d\n",
+			   avail, data, size);
 		bdx_tx_push_desc(priv, data, avail);
 		size -= avail;
 		data += avail;
@@ -3250,7 +3274,7 @@ static int __init bdx_probe(struct pci_dev *pdev,
 			nic->irq_type = IRQ_MSI;
 		}
 	} else {
-		DBG("HW does not support MSI\n");
+		netdev_dbg(ndev, "HW does not support MSI\n");
 	}
 
 	/************** netdev **************/
@@ -3321,7 +3345,7 @@ static int __init bdx_probe(struct pci_dev *pdev,
 	LUXOR__NAPI_ADD(ndev, &priv->napi, bdx_poll, 64);
 
 	if ((readl(nic->regs + FPGA_VER) & 0xFFF) == 308) {
-		DBG("HW statistics not supported\n");
+		netdev_dbg(ndev, "HW statistics not supported\n");
 		priv->stats_flag = 0;
 	} else {
 		priv->stats_flag = 1;
@@ -3510,7 +3534,7 @@ static int bdx_set_settings(struct net_device *netdev, struct ethtool_cmd *ecmd)
 {
 	struct bdx_priv *priv = netdev_priv(netdev);
 
-	DBG("ecmd->cmd=%x\n", ecmd->cmd);
+	netdev_dbg(netdev, "ecmd->cmd=%x\n", ecmd->cmd);
 
 	return priv->phy_ops.set_settings(netdev, ecmd);
 }
@@ -3924,9 +3948,9 @@ static int bdx_suspend(struct device *dev)
 	MSG("System suspend\n");
 	bdx_stop(priv);
 	err = pci_save_state(pdev);
-	DBG("pci_save_state = %d\n", err);
+	netdev_dbg(priv->ndev, "pci_save_state = %d\n", err);
 	err = pci_prepare_to_sleep(pdev);
-	DBG("pci_prepare_to_sleep = %d\n", err);
+	netdev_dbg(priv->ndev, "pci_prepare_to_sleep = %d\n", err);
 	return 0;
 }
 
@@ -3942,7 +3966,7 @@ static int bdx_resume(struct device *dev)
 	do {
 		pci_restore_state(pdev);
 		rc = pci_save_state(pdev);
-		DBG("pci_save_state = %d\n", rc);
+		netdev_dbg(priv->ndev, "pci_save_state = %d\n", rc);
 		setMDIOSpeed(priv, priv->phy_ops.mdio_speed);
 		if (priv->phy_ops.mdio_reset(priv, priv->phy_mdio_port,
 					     priv->phy_type) != 0) {

@@ -258,7 +258,9 @@ int sff_read_str(struct bdx_priv *priv, unsigned char sfp_adr,
 	if (len & 0xff00)
 		return 0;
 
-	DBG("TLK10232 sff_read_str sfp_adr=%x addr=%x start \n", sfp_adr, addr);
+	netdev_dbg(priv->ndev,
+		   "TLK10232 sff_read_str sfp_adr=%x addr=%x start \n", sfp_adr,
+		   addr);
 
 	do {
 		err = i2c_write_byte(priv, 1, 0, sfp_adr & 0xfe);
@@ -287,11 +289,13 @@ int sff_read_str(struct bdx_priv *priv, unsigned char sfp_adr,
 		data = i2c_read_byte(priv, 1, 1);
 		buf[i] = data;
 		i++;
-		DBG("TLK10232 sff_read_str sfp_adr=%x addr=%x end \n", sfp_adr,
-		    addr);
+		netdev_dbg(priv->ndev,
+			   "TLK10232 sff_read_str sfp_adr=%x addr=%x end \n",
+			   sfp_adr, addr);
 	} while (0);
 	if (err) {
-		DBG("TLK10232 sff_read step %u failed\n", err);
+		netdev_dbg(priv->ndev, "TLK10232 sff_read step %u failed\n",
+			   err);
 		i = 0;
 		i2c_stop_cond(priv);
 	}
@@ -313,7 +317,7 @@ int sff_write_str(struct bdx_priv *priv, unsigned char sfp_adr,
 	if (len & 0xff00)
 		return 0;
 
-	DBG("sfp_addr=%x addr=%x start \n", sfp_adr, addr);
+	netdev_dbg(priv->ndev, "sfp_addr=%x addr=%x start \n", sfp_adr, addr);
 
 	do {
 		err = i2c_write_byte(priv, 1, 0, sfp_adr & 0xfe);
@@ -342,7 +346,8 @@ int sff_write_str(struct bdx_priv *priv, unsigned char sfp_adr,
 		}
 		err = i2c_write_byte(priv, 0, 1, buf[i]);
 		i++;
-		DBG("sfp_addr=%x addr=%x end \n", sfp_adr, addr);
+		netdev_dbg(priv->ndev, "sfp_addr=%x addr=%x end \n", sfp_adr,
+			   addr);
 	} while (0);
 
 	if (err) {
@@ -372,14 +377,15 @@ int read_sfp_id(struct bdx_priv *priv)
 
 	set_GPIO(priv);
 	i = read_GPIO_N(priv, MOD_ABS_GPIO);
-	DBG("MOD_ABS_GPIO=%u  \n", i);
+	netdev_dbg(priv->ndev, "MOD_ABS_GPIO=%u  \n", i);
 	if (i)
 		return SFP_ABS;
 	ret = sff_read_str(priv, sff_addr, addr, len, buff);
 #if 1
-	DBG("sff_read_str(0x%x,0x%x,0x%x)=%x  \n", sff_addr, addr, len, ret);
+	netdev_dbg(priv->ndev, "sff_read_str(0x%x,0x%x,0x%x)=%x  \n", sff_addr,
+		   addr, len, ret);
 	for (i = 0; i < ret; i++) {
-		DBG("buf[%u]=0x%x \n", i, buff[i] & 0xff);
+		netdev_dbg(priv->ndev, "buf[%u]=0x%x \n", i, buff[i] & 0xff);
 	}
 #endif
 	if (buff[5] & 0xF)
@@ -434,7 +440,9 @@ int TLK10232_phy_config(struct bdx_priv *priv)
 		udelay(25);
 		regVal = bdx_mdio_read(priv, 0x1e, port, CHANNEL_STATUS_1);
 		regVal = bdx_mdio_read(priv, 0x1e, port, CHANNEL_STATUS_1);
-		DBG("TLK10232_phy_config() CHANNEL_STATUS_1 = 0x%x Fail:%x loops:%d (Fail mask 0x0100)\n", regVal, (regVal & 0x0100), j);
+		netdev_dbg(priv->ndev,
+			   "TLK10232_phy_config() CHANNEL_STATUS_1 = 0x%x Fail:%x loops:%d (Fail mask 0x0100)\n",
+			   regVal, (regVal & 0x0100), j);
 	} while ((regVal & 0x0100) && (j++ < 100));
 
 	return 0;
@@ -463,7 +471,7 @@ u32 TLK10232_get_link_speed(struct bdx_priv * priv)
 		break;
 	}
 
-	DBG("speed: %d\n", speed);
+	netdev_dbg(priv->ndev, "speed: %d\n", speed);
 	return speed;
 }
 
@@ -475,7 +483,8 @@ int TLK10232_mdio_reset(struct bdx_priv *priv, int port, unsigned short phy)
 	/* Device reset */
 	BDX_MDIO_WRITE(priv, 0x1e, GLOBAL_CONTROL_1, 0x8610);
 	regVal = bdx_mdio_read(priv, 0x1e, port, GLOBAL_CONTROL_1);
-	DBG("TLK10232_mdio_reset() GLOBAL_CONTROL_1 = 0x%x\n", regVal);
+	netdev_dbg(priv->ndev,
+		   "TLK10232_mdio_reset() GLOBAL_CONTROL_1 = 0x%x\n", regVal);
 	msleep(100);
 
 	BDX_MDIO_WRITE(priv, 0x7, AN_CONTROL, 0x2000);
@@ -493,16 +502,18 @@ u32 TLK10232_link_changed(struct bdx_priv * priv)
 
 	priv->link_speed = TLK10232_get_link_speed(priv);
 	link = READ_REG(priv, regMAC_LNK_STAT) & MAC_LINK_STAT;
-	DBG("link state reg: 0x%x\n", READ_REG(priv, regMAC_LNK_STAT));
+	netdev_dbg(priv->ndev, "link state reg: 0x%x\n",
+		   READ_REG(priv, regMAC_LNK_STAT));
 	if (link) {
 		link = priv->link_speed;
-		DBG("TLK10232 link speed is %s\n",
-		    (priv->link_speed == SPEED_10000) ? "10G" : "1G");
+		netdev_dbg(priv->ndev, "TLK10232 link speed is %s\n",
+			   (priv->link_speed == SPEED_10000) ? "10G" : "1G");
 		WRITE_REG(priv, 0x5150, 0);	/*  stop timer */
 	} else {
 		if (priv->link_loop_cnt++ > LINK_LOOP_MAX) {
-			DBG("TLK10232 trying to recover link after %d tries\n",
-			    LINK_LOOP_MAX);
+			netdev_dbg(priv->ndev,
+				   "TLK10232 trying to recover link after %d tries\n",
+				   LINK_LOOP_MAX);
 			/* MAC reset */
 			bdx_speed_set(priv, 0);
 			bdx_speed_set(priv, priv->link_speed);
@@ -533,14 +544,14 @@ void TLK10232_leds(struct bdx_priv *priv, enum PHY_LEDS_OP op)
 		break;
 
 	default:
-		DBG("TLK10232_leds() unknown op 0x%x\n", op);
+		netdev_dbg(priv->ndev, "TLK10232_leds() unknown op 0x%x\n", op);
 		break;
 	}
 }
 
 __init enum PHY_TYPE TLK10232_register(struct bdx_priv *priv)
 {
-	DBG("init\n");
+	netdev_dbg(priv->ndev, "init\n");
 	priv->isr_mask =
 	    IR_RX_FREE_0 | IR_LNKCHG0 | IR_PSE | IR_TMR0 | IR_RX_DESC_0 |
 	    IR_TX_FREE_0;

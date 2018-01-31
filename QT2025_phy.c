@@ -140,19 +140,21 @@ u32 QT2025_link_changed(struct bdx_priv * priv)
 	priv->link_speed = QT2025_get_link_speed(priv);
 	link = READ_REG(priv, regMAC_LNK_STAT) & MAC_LINK_STAT;
 	if (link) {
-		DBG("QT2025 link speed is %s\n",
-		    (priv->link_speed == SPEED_10000) ? "10G" : "1G");
+		netdev_dbg(priv->ndev, "QT2025 link speed is %s\n",
+			   (priv->link_speed == SPEED_10000) ? "10G" : "1G");
 		link = priv->link_speed;
 	} else {
 		if (priv->link_loop_cnt++ > LINK_LOOP_MAX) {
-			DBG("QT2025 trying to recover link after %d tries\n",
-			    LINK_LOOP_MAX);
+			netdev_dbg(priv->ndev,
+				   "QT2025 trying to recover link after %d tries\n",
+				   LINK_LOOP_MAX);
 			/* MAC reset */
 			bdx_speed_set(priv, 0);
 			bdx_speed_set(priv, priv->link_speed);
 			priv->link_loop_cnt = 0;
 		}
-		DBG("QT2025 no link, setting 1/5 sec timer\n");
+		netdev_dbg(priv->ndev,
+			   "QT2025 no link, setting 1/5 sec timer\n");
 		WRITE_REG(priv, 0x5150, 1000000);	/* 1/5 sec timeout */
 	}
 
@@ -178,7 +180,7 @@ void QT2025_leds(struct bdx_priv *priv, enum PHY_LEDS_OP op)
 		break;
 
 	default:
-		DBG("QT2025_leds() unknown op 0x%x\n", op);
+		netdev_dbg(priv->ndev, "QT2025_leds() unknown op 0x%x\n", op);
 		break;
 
 	}

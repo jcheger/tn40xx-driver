@@ -84,7 +84,6 @@ extern int g_memLog;
 #define MEMLOG_ON		g_memLog = 1
 #define MEMLOG1_ON		g_memLog = 2
 #define MEMLOG_OFF		g_memLog = 0
-/*#define DBG(arg...)         	if (g_memLog) memLog(TN40_DRV_NAME": " arg) */
 
 #else
 #define MEMLOG_ON
@@ -99,13 +98,9 @@ extern int g_memLog;
 
 /*	D E B U G	*/
 #if defined(TN40_DEBUG) && defined(TN40_MEMLOG)
-#define DBG(fmt, args...)	if (g_memLog) 	  memLog(fmt, ##args); else if (g_dbg) 	 printk(KERN_ERR  BDX_DRV_NAME": ""%s:%-5d: " fmt, __func__, __LINE__, ## args)
 #elif defined(TN40_MEMLOG)
-#define DBG(fmt, args...)	if (g_memLog) 	  memLog(fmt, ##args)
 #elif defined(TN40_DEBUG)
-#define	DBG(fmt, args...)	printk(KERN_ERR  BDX_DRV_NAME": ""%s:%-5d: " fmt, __func__, __LINE__, ## args)
 #else
-#define DBG(fmt, args...)
 #endif
 
 #ifdef REGLOG

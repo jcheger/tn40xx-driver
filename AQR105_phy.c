@@ -19,42 +19,42 @@ int AQR105_set_speed(struct bdx_priv *priv, signed int speed)
 	int rVal = 0;
 
 	if (priv->autoneg == AUTONEG_ENABLE) {
-		DBG("AQR105 speed %d Autoneg\n", speed);
+		netdev_dbg(priv->ndev, "AQR105 speed %d Autoneg\n", speed);
 		BDX_MDIO_WRITE(priv, 0x07, 0x10, 0x9101);
 		BDX_MDIO_WRITE(priv, 0x07, 0xC400, 0x9C5A);
 		BDX_MDIO_WRITE(priv, 0x07, 0x20, 0x1001);
 	} else {
 		switch (speed) {
 		case 10000:	/*10G */
-			DBG("AQR105 speed 10G\n");
+			netdev_dbg(priv->ndev, "AQR105 speed 10G\n");
 			BDX_MDIO_WRITE(priv, 0x07, 0x10, 0x9001);
 			BDX_MDIO_WRITE(priv, 0x07, 0xC400, 0x40);
 			BDX_MDIO_WRITE(priv, 0x07, 0x20, 0x1001);
 			break;
 
 		case 5000:	/*5G */
-			DBG("AQR105 speed 5G\n");
+			netdev_dbg(priv->ndev, "AQR105 speed 5G\n");
 			BDX_MDIO_WRITE(priv, 0x07, 0x10, 0x9001);
 			BDX_MDIO_WRITE(priv, 0x07, 0xC400, 0x840);
 			BDX_MDIO_WRITE(priv, 0x07, 0x20, 0x1);
 			break;
 
 		case 2500:	/*2.5G */
-			DBG("AQR105 speed 10G\n");
+			netdev_dbg(priv->ndev, "AQR105 speed 10G\n");
 			BDX_MDIO_WRITE(priv, 0x07, 0x10, 0x9001);
 			BDX_MDIO_WRITE(priv, 0x07, 0xC400, 0x440);
 			BDX_MDIO_WRITE(priv, 0x07, 0x20, 0x1);
 			break;
 
 		case 1000:	/*1G */
-			DBG("AQR105 speed 1G\n");
+			netdev_dbg(priv->ndev, "AQR105 speed 1G\n");
 			BDX_MDIO_WRITE(priv, 0x07, 0x10, 0x8001);
 			BDX_MDIO_WRITE(priv, 0x07, 0xC400, 0x8040);
 			BDX_MDIO_WRITE(priv, 0x07, 0x20, 0x1);
 			break;
 
 		case 100:	/*100m */
-			DBG("AQR105 speed 100m\n");
+			netdev_dbg(priv->ndev, "AQR105 speed 100m\n");
 			BDX_MDIO_WRITE(priv, 0x07, 0x10, 0x101);
 			BDX_MDIO_WRITE(priv, 0x07, 0xC400, 0x40);
 			BDX_MDIO_WRITE(priv, 0x07, 0x20, 0x1);
@@ -404,36 +404,37 @@ static int AQR105_get_link_speed(struct bdx_priv *priv)
 		switch (val >> 1) {
 		case 5:	/*SPEED_RES_5GIG */
 			link = SPEED_5000;
-			DBG("AQR105 5G link detected\n");
+			netdev_dbg(priv->ndev, "AQR105 5G link detected\n");
 			break;
 
 		case 4:	/*SPEED_RES_2.5GIG */
 			link = SPEED_2500;
-			DBG("AQR105 2.5G link detected\n");
+			netdev_dbg(priv->ndev, "AQR105 2.5G link detected\n");
 			break;
 
 		case 3:	/*SPEED_RES_10GIG */
 			link = SPEED_10000;
-			DBG("AQR105 10G link detected\n");
+			netdev_dbg(priv->ndev, "AQR105 10G link detected\n");
 			break;
 
 		case 2:	/* SPEED_RES_1GIG */
 			link = SPEED_1000;
-			DBG("AQR105 1G link detected\n");
+			netdev_dbg(priv->ndev, "AQR105 1G link detected\n");
 			break;
 
 		case 1:	/* SPEED_RES_100M */
 			link = SPEED_100;
-			DBG("AQR105 100M %s link detected\n",
-			    (val & 1) ? "" : "Half Duplex");
+			netdev_dbg(priv->ndev, "AQR105 100M %s link detected\n",
+				   (val & 1) ? "" : "Half Duplex");
 			break;
 
 		case 0:	/* SPEED_RES_10M */
 			link = 0;
 			bdx_mdio_write(priv, 0x1E, priv->phy_mdio_port, 0xC430,
 				       0x0);
-			DBG("AQR105 10M %s link detected. Not Supported\n",
-			    (val & 1) ? "" : "Half Duplex");
+			netdev_dbg(priv->ndev,
+				   "AQR105 10M %s link detected. Not Supported\n",
+				   (val & 1) ? "" : "Half Duplex");
 			break;
 
 		}
@@ -441,7 +442,7 @@ static int AQR105_get_link_speed(struct bdx_priv *priv)
 	} else {
 		bdx_mdio_write(priv, 0x1E, priv->phy_mdio_port, 0xC430, 0x0);
 		if (++priv->errmsg_count < MAX_ERRMSGS) {
-			DBG("AQR105 link down.\n");
+			netdev_dbg(priv->ndev, "AQR105 link down.\n");
 		}
 	}
 
@@ -453,30 +454,31 @@ u32 AQR105_link_changed(struct bdx_priv * priv)
 	u32 link, speed;
 
 	speed = AQR105_get_link_speed(priv);
-	DBG("AQR105_link_changed speed=%u priv->link_speed=%u\n", speed,
-	    priv->link_speed);
+	netdev_dbg(priv->ndev,
+		   "AQR105_link_changed speed=%u priv->link_speed=%u\n", speed,
+		   priv->link_speed);
 	if (speed != (u32) priv->link_speed) {
 		switch (speed) {
 		case SPEED_10000:
-			DBG("AQR105 10G link detected\n");
+			netdev_dbg(priv->ndev, "AQR105 10G link detected\n");
 			break;
 		case SPEED_5000:
-			DBG("AQR105 5G link detected\n");
+			netdev_dbg(priv->ndev, "AQR105 5G link detected\n");
 			break;
 		case SPEED_2500:
-			DBG("AQR105 2.5G link detected\n");
+			netdev_dbg(priv->ndev, "AQR105 2.5G link detected\n");
 			break;
 		case SPEED_1000:
-			DBG("AQR105 1G link detected\n");
+			netdev_dbg(priv->ndev, "AQR105 1G link detected\n");
 			break;
 		case SPEED_100:
-			DBG("AQR105 100M link detected\n");
+			netdev_dbg(priv->ndev, "AQR105 100M link detected\n");
 			break;
 		case SPEED_10:
-			DBG("AQR105 10M link detected\n");
+			netdev_dbg(priv->ndev, "AQR105 10M link detected\n");
 			break;
 		default:
-			DBG("AQR105 link down.\n");
+			netdev_dbg(priv->ndev, "AQR105 link down.\n");
 			break;
 		}
 		bdx_speed_changed(priv, speed);
@@ -489,13 +491,16 @@ u32 AQR105_link_changed(struct bdx_priv * priv)
 			if (priv->link_loop_cnt++ > LINK_LOOP_MAX) {
 				bdx_speed_changed(priv, 0);
 				priv->link_loop_cnt = 0;
-				DBG("AQR105 trying to recover link after %d tries\n", LINK_LOOP_MAX);
+				netdev_dbg(priv->ndev,
+					   "AQR105 trying to recover link after %d tries\n",
+					   LINK_LOOP_MAX);
 			}
 		} else {
 			timeout = 5000000;	/* 1 sec */
 		}
-		DBG("AQR105 link = 0x%x speed = 0x%x setting %d timer\n", link,
-		    speed, timeout);
+		netdev_dbg(priv->ndev,
+			   "AQR105 link = 0x%x speed = 0x%x setting %d timer\n",
+			   link, speed, timeout);
 		WRITE_REG(priv, 0x5150, timeout);
 	}
 
@@ -530,7 +535,7 @@ void AQR105_leds(struct bdx_priv *priv, enum PHY_LEDS_OP op)
 		break;
 
 	default:
-		DBG("AQR105_leds() unknown op 0x%x\n", op);
+		netdev_dbg(priv->ndev, "AQR105_leds() unknown op 0x%x\n", op);
 		break;
 
 	}

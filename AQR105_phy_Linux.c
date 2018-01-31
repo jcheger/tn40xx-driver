@@ -37,12 +37,12 @@ int AQR105_set_settings(struct net_device *netdev, struct ethtool_cmd *ecmd)
 	s32 speed = ethtool_cmd_speed(ecmd);
 	int rVal = 0;
 
-	DBG("AQR105 ecmd->cmd=%x\n", ecmd->cmd);
-	DBG("AQR105 speed=%u\n", speed);
-	DBG("AQR105 ecmd->autoneg=%u\n", ecmd->autoneg);
+	netdev_dbg(netdev, "AQR105 ecmd->cmd=%x\n", ecmd->cmd);
+	netdev_dbg(netdev, "AQR105 speed=%u\n", speed);
+	netdev_dbg(netdev, "AQR105 ecmd->autoneg=%u\n", ecmd->autoneg);
 
 	if (ecmd->autoneg == AUTONEG_ENABLE) {
-		DBG("AQR105 speed %d Autoneg\n", speed);
+		netdev_dbg(netdev, "AQR105 speed %d Autoneg\n", speed);
 		priv->advertising =
 		    (ADVERTISED_10000baseT_Full | ADVERTISED_1000baseT_Full |
 		     ADVERTISED_100baseT_Full | ADVERTISED_Autoneg |
