@@ -104,10 +104,10 @@ __init int QT2025_mdio_reset(struct bdx_priv *priv, int port,
 	fwVer3 = bdx_mdio_read(priv, 3, port, 0xD7F5);
 	module = bdx_mdio_read(priv, 3, port, 0xD70C);
 
-	MSG("QT2025 FW version %d.%d.%d.%d module type 0x%x\n",
-	    ((fwVer01 >> 4) & 0xf),
-	    (fwVer01 & 0xf),
-	    (fwVer2 & 0xff), (fwVer3 & 0xff), (u32) (module & 0xff));
+	netdev_info(priv->ndev,
+		    "QT2025 FW version %d.%d.%d.%d module type 0x%x\n",
+		    ((fwVer01 >> 4) & 0xf), (fwVer01 & 0xf), (fwVer2 & 0xff),
+		    (fwVer3 & 0xff), (u32) (module & 0xff));
 
 	priv->link_speed = QT2025_get_link_speed(priv);
 	bdx_speed_set(priv, priv->link_speed);

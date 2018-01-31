@@ -475,7 +475,8 @@ static int __init bdx_mdio_phy_search(struct bdx_priv *priv,
 
 	}
 	setMDIOSpeed(priv, priv->phy_ops.mdio_speed);
-	MSG("PHY detected on port %u ID=%X - %s\n", *port_t, i, s);
+	netdev_info(priv->ndev, "PHY detected on port %u ID=%X - %s\n", *port_t,
+		    i, s);
 
 	return (PHY_TYPE_NA == *phy_t) ? -1 : 0;
 }
@@ -512,22 +513,24 @@ static void print_hw_id(struct pci_dev *pdev)
 	pci_read_config_word(pdev, PCI_LINK_STATUS_REG, &pci_link_status);
 	pci_read_config_word(pdev, PCI_DEV_CTRL_REG, &pci_ctrl);
 
-	MSG("srom 0x%x HWver %d build %u lane# %d max_pl 0x%x mrrs 0x%x\n",
-	    readl(nic->regs + SROM_VER),
-	    readl(nic->regs + FPGA_VER) & 0xFFFF,
-	    readl(nic->regs + FPGA_SEED),
-	    GET_LINK_STATUS_LANES(pci_link_status),
-	    GET_DEV_CTRL_MAXPL(pci_ctrl), GET_DEV_CTRL_MRRS(pci_ctrl));
+	dev_info(&pdev->dev,
+		 "srom 0x%x HWver %d build %u lane# %d max_pl 0x%x mrrs 0x%x\n",
+		 readl(nic->regs + SROM_VER),
+		 readl(nic->regs + FPGA_VER) & 0xFFFF,
+		 readl(nic->regs + FPGA_SEED),
+		 GET_LINK_STATUS_LANES(pci_link_status),
+		 GET_DEV_CTRL_MAXPL(pci_ctrl), GET_DEV_CTRL_MRRS(pci_ctrl));
 }
 
-static void print_fw_id(struct pci_nic *nic)
+static void print_fw_id(struct net_device *ndev, struct pci_nic *nic)
 {
-	MSG("fw 0x%x\n", readl(nic->regs + FW_VER));
+	netdev_info(ndev, "fw 0x%x\n", readl(nic->regs + FW_VER));
 }
 
 static void print_eth_id(struct net_device *ndev)
 {
-	MSG("%s, Port %c\n", ndev->name, (ndev->if_port == 0) ? 'A' : 'B');
+	netdev_info(ndev, "%s, Port %c\n", ndev->name,
+		    (ndev->if_port == 0) ? 'A' : 'B');
 }
 
 /*************************************************************************
@@ -759,17 +762,19 @@ static void bdx_link_changed(struct bdx_priv *priv)
 		if (!netif_carrier_ok(priv->ndev)) {
 			netif_wake_queue(priv->ndev);
 			netif_carrier_on(priv->ndev);
-			MSG("%s Link Up %s\n", priv->ndev->name,
-			    (priv->link_speed ==
-			     SPEED_10000) ? "10G" : (priv->link_speed ==
-						     SPEED_5000) ? "5G"
-			    : (priv->link_speed ==
-			       SPEED_2500) ? "2.5G" : (priv->link_speed ==
-						       SPEED_1000)
-			    || (priv->link_speed ==
-				SPEED_1000X) ? "1G" : (priv->link_speed ==
-						       SPEED_100)
-			    || (priv->link_speed == SPEED_100X) ? "100M" : " ");
+			netdev_info(priv->ndev, "%s Link Up %s\n",
+				    priv->ndev->name,
+				    (priv->link_speed ==
+				     SPEED_10000) ? "10G" : (priv->link_speed ==
+							     SPEED_5000) ? "5G"
+				    : (priv->link_speed ==
+				       SPEED_2500) ? "2.5G" : (priv->link_speed
+							       == SPEED_1000)
+				    || (priv->link_speed ==
+					SPEED_1000X) ? "1G" : (priv->link_speed
+							       == SPEED_100)
+				    || (priv->link_speed ==
+					SPEED_100X) ? "100M" : " ");
 		}
 	}
 
@@ -900,7 +905,7 @@ static int __init bdx_fw_load(struct bdx_priv *priv)
 		netdev_dbg(priv->ndev, "%s firmware loading success\n",
 			   priv->ndev->name);
 	}
-	print_fw_id(priv->nic);
+	print_fw_id(priv->ndev, priv->nic);
 	return rVal;
 
 }
@@ -3836,7 +3841,7 @@ static int bdx_set_eee(struct net_device *netdev, struct ethtool_eee *edata)
 		netdev_err(netdev, "EEE Functionality is not supported\n");
 		err = -EOPNOTSUPP;
 	} else {
-		MSG("Setting EEE\n");
+		netdev_info(netdev, "Setting EEE\n");
 		err = priv->phy_ops.set_eee(priv);
 	}
 	return err;
@@ -3931,7 +3936,7 @@ static void __exit bdx_remove(struct pci_dev *pdev)
 	g_ndevices_loaded -= 1;
 	spin_unlock(&g_lock);
 #endif
-	MSG("Device removed\n");
+	pr_info("Device removed\n");
 }
 
 #ifdef _DRIVER_RESUME_
@@ -3945,7 +3950,7 @@ static int bdx_suspend(struct device *dev)
 	struct bdx_priv *priv = nic->priv;
 	int err;
 
-	MSG("System suspend\n");
+	netdev_info(priv->ndev, "System suspend\n");
 	bdx_stop(priv);
 	err = pci_save_state(pdev);
 	netdev_dbg(priv->ndev, "pci_save_state = %d\n", err);
@@ -3961,7 +3966,7 @@ static int bdx_resume(struct device *dev)
 	struct bdx_priv *priv = nic->priv;
 	int rc = -1;
 
-	MSG("System resume\n");
+	netdev_dbg(priv->ndev, "System resume\n");
 
 	do {
 		pci_restore_state(pdev);
@@ -4031,9 +4036,10 @@ static void __init bdx_scan_pci(void)
 				       bdx_pci_tbl[j].subvendor,
 				       bdx_pci_tbl[j].subdevice, dev))) {
 			nDevices += 1;
-			MSG("%d %04x:%04x:%04x:%04x\n", nDevices,
-			    bdx_pci_tbl[j].vendor, bdx_pci_tbl[j].device,
-			    bdx_pci_tbl[j].subvendor, bdx_pci_tbl[j].subdevice);
+			pr_info("%d %04x:%04x:%04x:%04x\n", nDevices,
+				bdx_pci_tbl[j].vendor, bdx_pci_tbl[j].device,
+				bdx_pci_tbl[j].subvendor,
+				bdx_pci_tbl[j].subdevice);
 			if (nDevices > 20) {
 				pr_warn("to many devices detected ?!\n");
 				break;
@@ -4051,12 +4057,12 @@ static void __init bdx_scan_pci(void)
 	}
 #endif
 	spin_unlock(&g_lock);
-	MSG("detected %d cards, %d loaded\n", nDevices, nLoaded);
+	pr_info("detected %d cards, %d loaded\n", nDevices, nLoaded);
 }
 
 static void bdx_print_phys(void)
 {
-	MSG("Supported phys : %s %s %s %s %s %s %s %s\n",
+	pr_info("Supported phys : %s %s %s %s %s %s %s %s\n",
 #ifdef PHY_MV88X3120
 	    "MV88X3120",
 #else
@@ -4100,7 +4106,7 @@ static void bdx_print_phys(void)
  */
 static void __init print_driver_id(void)
 {
-	MSG("%s, %s\n", BDX_DRV_DESC, BDX_DRV_VERSION);
+	pr_info("%s, %s\n", BDX_DRV_DESC, BDX_DRV_VERSION);
 	bdx_print_phys();
 }
 
@@ -4121,7 +4127,7 @@ static void __exit bdx_module_exit(void)
 {
 
 	pci_unregister_driver(&bdx_pci_driver);
-	MSG("Driver unloaded\n");
+	pr_info("Driver unloaded\n");
 }
 
 module_exit(bdx_module_exit);

@@ -62,7 +62,6 @@
 #define TN40_THUNDERBOLT
 
 /* Debugging Macros */
-#define MSG(fmt, args...)  printk(KERN_ERR BDX_DRV_NAME": "fmt, ## args)
 
 /*#define BDX_ASSERT(x) BUG_ON(x) */
 #define BDX_ASSERT(x)
