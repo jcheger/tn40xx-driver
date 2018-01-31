@@ -16,7 +16,7 @@ int CX4_get_settings(struct net_device *netdev, struct ethtool_cmd *ecmd)
 
 int CX4_set_settings(struct net_device *netdev, struct ethtool_cmd *ecmd)
 {
-	ERR("CX4_set_settings() not implemented\n");
+	netdev_info(netdev, "CX4_set_settings() not implemented\n");
 
 	return -EPERM;
 }
@@ -51,7 +51,7 @@ int CX4_get_link_ksettings(struct net_device *netdev,
 int CX4_set_link_ksettings(struct net_device *netdev,
 			   const struct ethtool_link_ksettings *cmd)
 {
-	ERR("CX4_set_link_ksettings() not implemented\n");
+	netdev_info(netdev, "CX4_set_link_ksettings() not implemented\n");
 
 	return -EPERM;
 }

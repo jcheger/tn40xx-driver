@@ -61,7 +61,8 @@ int AQR105_set_speed(struct bdx_priv *priv, signed int speed)
 			break;
 
 		default:
-			ERR("does not support speed %u\n", speed);
+			netdev_info(priv->ndev, "does not support speed %u\n",
+				    speed);
 			rVal = -1;
 			break;
 		}
@@ -200,7 +201,7 @@ __init int AQR105_mdio_reset(struct bdx_priv *priv, int port,
 		BDX_MDIO_WRITE(priv, r1, 0x205, lsw);
 		val = bdx_mdio_read(priv, r1, port, 0x200);
 		if (val & (1 << 8)) {
-			ERR("Mailbox Busy !!!\n");
+			netdev_err(priv->ndev, "Mailbox Busy !!!\n");
 			return -1;
 		}
 		BDX_MDIO_WRITE(priv, r1, 0x200, mailboxWrite);
@@ -330,7 +331,7 @@ __init int AQR105_mdio_reset(struct bdx_priv *priv, int port,
 	val1 = val >> 8;
 	val &= 0xFF;
 	val2 &= 0xFF;
-	ERR("AQR105 FW ver: %x.%x.%x\n", val1, val, val2);
+	netdev_info(priv->ndev, "AQR105 FW ver: %x.%x.%x\n", val1, val, val2);
 /*Enable AQRate speeds */
 	msleep(20);
 	BDX_MDIO_WRITE(priv, 0x07, 0x10, 0x9101);

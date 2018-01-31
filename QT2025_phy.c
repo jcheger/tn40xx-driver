@@ -48,13 +48,15 @@ __init int QT2025_mdio_reset(struct bdx_priv *priv, int port,
 		break;
 
 	default:
-		ERR("PHY ID =0x%x, returning\n", (0xFF & (phy_id >> 8)));
+		netdev_err(priv->ndev, "PHY ID =0x%x, returning\n",
+			   (0xFF & (phy_id >> 8)));
 		return 1;
 		break;
 	}
 	switch (rev) {
 	default:
-		ERR("bdx: failed unknown PHY ID %x\n", phy_id);
+		netdev_err(priv->ndev, "bdx: failed unknown PHY ID %x\n",
+			   phy_id);
 		return 1;
 		break;
 
@@ -93,7 +95,7 @@ __init int QT2025_mdio_reset(struct bdx_priv *priv, int port,
 			}
 		}
 		if (!i) {
-			ERR("PHY init error\n");
+			netdev_err(priv->ndev, "PHY init error\n");
 		}
 		break;
 	}

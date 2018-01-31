@@ -62,7 +62,6 @@
 #define TN40_THUNDERBOLT
 
 /* Debugging Macros */
-#define ERR(fmt, args...)  printk(KERN_ERR BDX_DRV_NAME": "fmt, ## args)
 #define MSG(fmt, args...)  printk(KERN_ERR BDX_DRV_NAME": "fmt, ## args)
 
 /*#define BDX_ASSERT(x) BUG_ON(x) */
@@ -993,7 +992,7 @@ void bdx_speed_changed(struct bdx_priv *priv, u32 speed);
 
 #define  BDX_MDIO_WRITE(priv, space, addr, val) \
     if (bdx_mdio_write((priv), (space), port, (addr), (val))) {     \
-        ERR("bdx: failed to write  to phy at %x.%x val %x\n", \
+        netdev_err(priv->ndev, "bdx: failed to write  to phy at %x.%x val %x\n", \
                     (space),(addr),(val));                            \
         return 1;                                             \
     }

@@ -346,7 +346,7 @@ int sff_write_str(struct bdx_priv *priv, unsigned char sfp_adr,
 	} while (0);
 
 	if (err) {
-		ERR("step %u failed\n", err);
+		netdev_err(priv->ndev, "step %u failed\n", err);
 		i = 0;
 		i2c_stop_cond(priv);
 	}

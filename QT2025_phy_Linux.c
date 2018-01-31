@@ -25,7 +25,8 @@ int QT2025_set_settings(struct net_device *netdev, struct ethtool_cmd *ecmd)
 {
 	struct bdx_priv *priv = netdev_priv(netdev);
 
-	ERR("%s Does not support ethtool -s option\n", priv->ndev->name);
+	netdev_info(netdev, "%s Does not support ethtool -s option\n",
+		    priv->ndev->name);
 
 	return -EPERM;
 
@@ -65,7 +66,8 @@ int QT2025_set_link_ksettings(struct net_device *netdev,
 {
 	struct bdx_priv *priv = netdev_priv(netdev);
 
-	ERR("%s Does not support ethtool -s option\n", priv->ndev->name);
+	netdev_info(netdev, "%s Does not support ethtool -s option\n",
+		    priv->ndev->name);
 
 	return -EPERM;
 

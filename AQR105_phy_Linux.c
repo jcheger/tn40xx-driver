@@ -77,8 +77,9 @@ int AQR105_set_settings(struct net_device *netdev, struct ethtool_cmd *ecmd)
 			break;
 
 		default:
-			ERR("%s does not support speed %u\n", priv->ndev->name,
-			    speed);
+			netdev_info(priv->ndev,
+				    "%s does not support speed %u\n",
+				    priv->ndev->name, speed);
 			rVal = -EINVAL;
 		}
 	}
@@ -179,7 +180,8 @@ int AQR105_set_link_ksettings(struct net_device *netdev,
 			break;
 
 		default:
-			ERR("does not support speed %u\n", cmd->base.speed);
+			netdev_info(priv->ndev, "does not support speed %u\n",
+				    cmd->base.speed);
 			rVal = -EINVAL;
 			break;
 		}
