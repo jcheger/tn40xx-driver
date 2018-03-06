@@ -2,7 +2,7 @@ introduction
 ============
 Fork of TN40XX driver from https://github.com/acooks/tn40xx-driver, with DKMS configuration file
 
-The driver should be installed manually for current kernel. Altough, new installed kernels should get the driver compiled automatically.
+The driver should be installed manually for current kernel, altough new installed kernels should get the driver compiled automatically.
 
 requirements
 ============
