@@ -10,7 +10,12 @@ requirements
 Debian
 ------
     apt install build-essential git dkms
+    
+if you have a Debian / Ubuntu stock kernel:
     apt install linux-headers-`uname -r`
+    
+if you have a Proxmox kernel:
+    apt install pve-headers-`uname -r`
 
 install
 =======
