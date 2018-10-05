@@ -17,7 +17,7 @@ if you have a Debian / Ubuntu stock kernel:
     
 if you have a Proxmox kernel:
 
-    apt install pve-headers-`uname -r`
+    apt install pve-headers pve-headers-`uname -r`
 
 install
 =======
