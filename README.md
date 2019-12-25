@@ -25,7 +25,7 @@ if you have a Proxmox kernel:
 
 install
 =======
-    git clone -b cleanup/v0.3.6.15 https://github.com/jcheger/tn40xx-driver-dkms.git /usr/src/tn40xx-0.3.6.15
+    git clone -b cleanup/v0.3.6.15 https://github.com/jcheger/tn40xx-driver.git /usr/src/tn40xx-0.3.6.15
     dkms add -m tn40xx -v 0.3.6.15
 
 build driver for current kernel
