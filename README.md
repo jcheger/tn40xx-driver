@@ -1,3 +1,7 @@
+**DO NOT USE THIS REPOSITORY (for archive only - was merged into the original one)**
+
+**USE THIS PROCEDURE INSTEAD: https://github.com/acooks/tn40xx-driver/blob/release/tn40xx-002/docs/dkms.md**
+
 introduction
 ============
 Fork of TN40XX driver from https://github.com/acooks/tn40xx-driver, with DKMS configuration file
@@ -21,7 +25,7 @@ if you have a Proxmox kernel:
 
 install
 =======
-    git clone -b cleanup/v0.3.6.15 https://github.com/jcheger/tn40xx-driver.git /usr/src/tn40xx-0.3.6.15
+    git clone -b cleanup/v0.3.6.15 https://github.com/jcheger/tn40xx-driver-dkms.git /usr/src/tn40xx-0.3.6.15
     dkms add -m tn40xx -v 0.3.6.15
 
 build driver for current kernel
